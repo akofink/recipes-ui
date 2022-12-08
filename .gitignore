@@ -13,6 +13,7 @@
 /dist/*
 !/dist/favicon.ico
 !/dist/index.html
+!/dist/404.html
 
 # misc
 .DS_Store
