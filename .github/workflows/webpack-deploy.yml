@@ -22,6 +22,8 @@ jobs:
 
     - name: Build
       run: |
+        git config --global user.email "akofink@users.noreply.github.com"
+        git config --global user.name "recipes-ui CI"
         yarn
         yarn build
         yarn deploy
