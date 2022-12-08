@@ -73,8 +73,7 @@
     "build-dev": "webpack",
     "deploy": "gh-pages deploy -d dist",
     "watch": "webpack --watch",
-    "start": "webpack serve",
-    "test": "node scripts/test.js"
+    "start": "webpack serve"
   },
   "eslintConfig": {
     "extends": [
