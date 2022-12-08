@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "license": "MIT",
   "private": true,
+  "homepage": "https://recipes.akofink.com/",
   "dependencies": {
     "@babel/core": "^7.17.8",
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.3",
