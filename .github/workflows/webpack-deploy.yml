@@ -22,6 +22,5 @@ jobs:
 
     - name: Build
       run: |
-        npm install
-        npx webpack
+        yarn build
         yarn deploy
