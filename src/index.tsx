@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import "./index.css";
-import App, { BASE_URL } from "./App";
+import App from "./App";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import routes from './routes';
 
