@@ -10,10 +10,7 @@
 
 # production
 /build
-/dist/*
-!/dist/favicon.ico
-!/dist/index.html
-!/dist/404.html
+/dist/index.bundle.js
 
 # misc
 .DS_Store
