@@ -1,10 +1,14 @@
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, ReactElement, useEffect, useMemo, useState } from 'react';
 import {
   Container,
   Row,
-  Col,
 } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
+import Navigation from './navigation';
 
+type FileJson = {
+  name?: string;
+}
 type File = {
   name: string;
 }
@@ -12,22 +16,29 @@ type File = {
 export const Recipes: FC = () => {
   const [files, setFiles] = useState<File[]>([]);
   useEffect(() => {
-    fetch('https://api.github.com/repos/akofink/recipes-md/contents')
+    fetch('https://api.github.com/repos/akofink/recipes-md/contents/recipes')
       .then(response => response.json())
-      .then(files => setFiles(files));
+      .then(json => setFiles(jsonToFiles(json)));
   }, []);
 
-  const fileToRow = (file: File) => (
-    <Row>
-      { file.name }
+  const jsonToFiles = (files: FileJson[]) => files.map(
+    json => ({ name: (json.name ?? '').replace(/.md$/, '') })
+  )
+  const fileToRow: (props: File) => ReactElement = ({ name }) => (
+    <Row key={ name }>
+      <Link to={ `/${name}` }>
+        { name }
+      </Link>
     </Row>
   );
-  const makeRows = (json: any) => json.map(fileToRow);
-  const rows: FC[] = useMemo(makeRows(files), [files]);
+  const makeRows: (files: File[]) => ReactElement[] = files => files.map(fileToRow);
+  const rows: ReactElement[] = useMemo(() => makeRows(files), [files]);
 
   return (
-    <Container>
-      { ...rows }
-    </Container>
+    <Navigation>
+      <Container>
+        { rows }
+      </Container>
+    </Navigation>
   );
 };
