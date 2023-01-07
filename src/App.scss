@@ -2,4 +2,23 @@
 
 .logo-link {
     text-decoration: none;
+    padding: 0 1rem 0 1rem;
+}
+
+.app-container-div {
+    height: 100%;
+    border-width: 0;
+    border-style: double;
+    border-color: cornsilk;
+    border-top-width: 0.5rem;
+    padding: 1rem 10% 5rem 10%;
+    // background-color: lightgoldenrodyellow;
+}
+
+.justify-content-end {
+    justify-content: end;
+}
+
+html, body {
+    height: 100%;
 }

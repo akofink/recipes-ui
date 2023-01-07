@@ -1,6 +1,8 @@
 import { FC } from "react";
-import { Navbar } from "react-bootstrap";
+import { Nav, Navbar } from "react-bootstrap";
 import { Link } from "react-router-dom";
+
+export const ADD_RECIPE_URL = 'https://github.com/akofink/recipes-md/new/main/recipes'
 
 export const Navigation: FC = ({ children }) => {
     return (<>
@@ -8,8 +10,15 @@ export const Navigation: FC = ({ children }) => {
             <Link to='/' className='logo-link'>
                 <Navbar.Brand>akRecipes</Navbar.Brand>
             </Link>
+            <Navbar.Collapse className='justify-content-end'>
+                <Nav.Link href={ADD_RECIPE_URL} target='_blank'>
+                    Add a recipe
+                </Nav.Link>
+            </Navbar.Collapse>
         </Navbar>
-        { children }
+        <div className="app-container-div">
+            { children }
+        </div>
     </>);
 };
 

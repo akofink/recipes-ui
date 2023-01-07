@@ -9,7 +9,7 @@ export default [
     errorElement: <Error />,
   },
   {
-    path: "/:filename",
+    path: "/:fileBasename",
     element: <Recipe />,
   },
 ];
