@@ -1,7 +1,16 @@
 @import "bootstrap";
 
-.logo-link {
+.clean-link {
+    &:hover {
+        color: inherit;
+        transform: scale(0.1rem);
+    }
     text-decoration: none;
+    color: inherit;
+}
+
+.logo-link {
+    @extend .clean-link;
     padding: 0 1rem 0 1rem;
 }
 
@@ -13,6 +22,24 @@
     border-top-width: 0.5rem;
     padding: 1rem 10% 5rem 10%;
     // background-color: lightgoldenrodyellow;
+}
+
+.recipe-card-img {
+    max-height: 200px;
+    min-height: 100px;
+}
+
+.recipe-card {
+    overflow: hidden;
+    margin: 0.5rem 0;
+}
+
+.recipe-card-body {
+    height: 50px;
+}
+
+.col {
+    padding: 0 0.2rem;
 }
 
 .justify-content-end {

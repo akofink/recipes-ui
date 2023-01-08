@@ -1,43 +1,47 @@
 import { FC, ReactElement, useEffect, useMemo, useState } from 'react';
 import {
-  Container,
-  Row,
+  Container, Row
 } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import RecipeCard from '../components/recipe-card';
+
+import { RECIPESMD_CONTENTS } from '../constants';
+import { GithubFile } from '../types';
+import { fetchWithGithubAuthToJson, jsonToFiles } from '../util/fetch';
 import Navigation from './navigation';
 
-type FileJson = {
-  name?: string;
-}
-type File = {
-  name: string;
-}
-
 export const Recipes: FC = () => {
-  const [files, setFiles] = useState<File[]>([]);
+  const [recipes, setRecipes] = useState<GithubFile[]>([]);
+  const [imageDirs, setImageDirs] = useState<GithubFile[]>([]);
   useEffect(() => {
-    fetch('https://api.github.com/repos/akofink/recipes-md/contents/recipes')
-      .then(response => response.json())
-      .then(json => setFiles(jsonToFiles(json)));
+    fetchWithGithubAuthToJson(`${RECIPESMD_CONTENTS}/recipes`)
+      .then(json => setRecipes(jsonToFiles(json)));
   }, []);
+  useEffect(() => {
+    fetchWithGithubAuthToJson(`${RECIPESMD_CONTENTS}/images`)
+      .then(json => setImageDirs(jsonToFiles(json)));
+  }, []);
+  useEffect(() => {
+    setRecipes(
+      recipes.map(recipe => {
+        const imageDir = imageDirs.find(imageDir => (imageDir.name == recipe.name))?.name;
+        return {
+          imageDir,
+          ...recipe,
+        };
+    })
+    );
+  }, [imageDirs]);
 
-  const jsonToFiles = (files: FileJson[]) => files.map(
-    json => ({ name: (json.name ?? '').replace(/.md$/, '') })
-  )
-  const fileToRow: (props: File) => ReactElement = ({ name }) => (
-    <Row key={ name }>
-      <Link to={ `/${name}` }>
-        { name }
-      </Link>
-    </Row>
+  const fileToCard: (props: GithubFile) => ReactElement = (props) => (
+    <RecipeCard key={props.name} {...props} />
   );
-  const makeRows: (files: File[]) => ReactElement[] = files => files.map(fileToRow);
-  const rows: ReactElement[] = useMemo(() => makeRows(files), [files]);
+  const makeCards: (recipes: GithubFile[]) => ReactElement[] = recipes => recipes.map(fileToCard);
+  const cards: ReactElement[] = useMemo(() => makeCards(recipes), [recipes]);
 
   return (
     <Navigation>
       <Container>
-        { rows }
+        <Row xs={2} sm={3} md={4} lg={5}>{cards}</Row>
       </Container>
     </Navigation>
   );
