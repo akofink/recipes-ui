@@ -24,9 +24,27 @@
     // background-color: lightgoldenrodyellow;
 }
 
+.spin {
+  animation: rotation 3s infinite linear;
+}
+
+.spinner-svg {
+    @extend .spin;
+}
+
+@keyframes rotation {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(359deg);
+  }
+}
+
 .recipe-card-img {
     max-height: 200px;
     min-height: 100px;
+    background-image: './spinner.svg';
 }
 
 .recipe-card {

@@ -11,26 +11,11 @@ import Navigation from './navigation';
 
 export const Recipes: FC = () => {
   const [recipes, setRecipes] = useState<GithubFile[]>([]);
-  const [imageDirs, setImageDirs] = useState<GithubFile[]>([]);
+
   useEffect(() => {
     fetchWithGithubAuthToJson(`${RECIPESMD_CONTENTS}/recipes`)
       .then(json => setRecipes(jsonToFiles(json)));
   }, []);
-  useEffect(() => {
-    fetchWithGithubAuthToJson(`${RECIPESMD_CONTENTS}/images`)
-      .then(json => setImageDirs(jsonToFiles(json)));
-  }, []);
-  useEffect(() => {
-    setRecipes(
-      recipes.map(recipe => {
-        const imageDir = imageDirs.find(imageDir => (imageDir.name == recipe.name))?.name;
-        return {
-          imageDir,
-          ...recipe,
-        };
-    })
-    );
-  }, [imageDirs]);
 
   const fileToCard: (props: GithubFile) => ReactElement = (props) => (
     <RecipeCard key={props.name} {...props} />
