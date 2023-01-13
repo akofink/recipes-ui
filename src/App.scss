@@ -42,9 +42,8 @@
 }
 
 .recipe-card-img {
-    height: 200px;
-    width: auto;
-    background-image: './spinner.svg';
+    height: 150px;
+    object-fit: cover;
 }
 
 .recipe-card {
