@@ -10,7 +10,10 @@
 
 # production
 /build
-/dist/index.bundle.js
+/dist/
+
+# generated at build time
+/src/generated/
 
 # misc
 .DS_Store
