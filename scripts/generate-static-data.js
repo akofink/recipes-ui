@@ -19,6 +19,7 @@ const COMMITS_BASE = `${GH_API}/repos/${OWNER}/${REPO}/commits`;
 const OUT_DIR = path.resolve(__dirname, '..', 'src', 'generated');
 const OUT_FILE = path.join(OUT_DIR, 'recipes.json');
 const META_FILE = path.join(OUT_DIR, 'meta.json');
+const SCHEMA_VERSION = 2;
 
 function authHeaders() {
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || process.env.RECIPES_GITHUB_TOKEN;
@@ -98,6 +99,15 @@ function readLocalMeta() {
   }
 }
 
+function readLocalRecipes() {
+  try {
+    const raw = fs.readFileSync(OUT_FILE, 'utf8');
+    return JSON.parse(raw);
+  } catch (_) {
+    return null;
+  }
+}
+
 function fileExists(p) {
   try {
     fs.accessSync(p, fs.constants.F_OK);
@@ -146,16 +156,22 @@ async function main() {
   }
   const localMeta = readLocalMeta();
   const outFileExists = fileExists(OUT_FILE);
+  const localRecipes = readLocalRecipes();
   if (
     outFileExists &&
     localMeta &&
     localMeta.source &&
+    localMeta.schemaVersion === SCHEMA_VERSION &&
     localMeta.source.branch === BRANCH &&
     localMeta.source.recipesSha === recipesSha &&
     localMeta.source.imagesSha === imagesSha
   ) {
     console.log('[generate-static-data] Up to date. Skipping generation.');
     return;
+  }
+
+  if (outFileExists && localRecipes && localRecipes.length) {
+    console.log('[generate-static-data] Note: generated data present but meta missing/mismatched; regenerating to update schema/meta.');
   }
 
   console.log('[generate-static-data] Fetching recipe list...');
@@ -175,6 +191,7 @@ async function main() {
   await fs.promises.mkdir(OUT_DIR, { recursive: true });
   await fs.promises.writeFile(OUT_FILE, JSON.stringify(out, null, 2), 'utf8');
   const meta = {
+    schemaVersion: SCHEMA_VERSION,
     source: { owner: OWNER, repo: REPO, branch: BRANCH, recipesSha, imagesSha },
     generatedAt: new Date().toISOString(),
     count: out.length,
