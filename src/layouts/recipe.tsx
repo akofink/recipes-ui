@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown'
 import { useParams } from 'react-router-dom';
 import Navigation from './navigation';
+import { Row, Col } from 'react-bootstrap';
 import { RECIPESMD_RAW } from '../constants';
 // Note: generated at build-time. During development, run `yarn generate` first.
 import recipesData from '../generated/recipes.json';
@@ -23,14 +24,17 @@ export const Recipe = () => {
       <h1>{ name }</h1>
       {imageNames.length > 0 && (
         <div style={{ marginBottom: '1rem' }}>
-          {imageNames.map((img) => (
-            <img
-              key={img}
-              src={`${RECIPESMD_RAW}/images/${name}/${img}`}
-              alt={`${name} ${img}`}
-              style={{ maxWidth: '100%', height: 'auto', display: 'block', marginBottom: '0.5rem' }}
-            />
-          ))}
+          <Row xs={1} sm={2} md={3} lg={4} className="g-3">
+            {imageNames.map((img) => (
+              <Col key={img}>
+                <img
+                  src={`${RECIPESMD_RAW}/images/${name}/${img}`}
+                  alt={`${name} ${img}`}
+                  style={{ width: '100%', height: 200, objectFit: 'cover', borderRadius: 6 }}
+                />
+              </Col>
+            ))}
+          </Row>
         </div>
       )}
       <ReactMarkdown>
