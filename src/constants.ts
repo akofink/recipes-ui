@@ -1,5 +1,5 @@
 export const GITHUB_RO_APP_TOKEN =
-  "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";
+  "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";
 export const GITHUB_FETCH_AUTH = {
   Authorization: `Basic ${GITHUB_RO_APP_TOKEN}`,
 };
