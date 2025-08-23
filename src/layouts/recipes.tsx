@@ -4,6 +4,7 @@ import {
 } from 'react-bootstrap';
 import RecipeCard from '../components/recipe-card';
 
+// Note: generated at build-time. During development, run `yarn generate` first.
 import recipesData from '../generated/recipes.json';
 import { GithubFile, RecipeData } from '../types';
 import Navigation from './navigation';

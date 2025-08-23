@@ -21,13 +21,17 @@ A React + TypeScript single-page app built with Webpack and deployed to GitHub P
    # or install if needed
    nvm install
    ```
-3. Install dependencies
+3. Install dependencies and generate data
+   - For development, run the generator once to create `src/generated/recipes.json`:
+     ```bash
+     yarn generate
+     ```
    ```bash
    yarn install
    # or
    npm install
    ```
-4. Start the development server (with HMR)
+4. Start the development server (with HMR) — ensure `src/generated/recipes.json` exists (use `yarn generate`)
    ```bash
    yarn start
    # or
@@ -41,7 +45,7 @@ A React + TypeScript single-page app built with Webpack and deployed to GitHub P
 ## Scripts
 - `yarn start` – Run webpack-dev-server with hot reload
 - `yarn watch` – Rebuild on file changes (without dev server)
-- `yarn build` – Create a production build in `dist/`
+- `yarn build` – Create a production build in `dist/` (runs static data generation first)
 - `yarn deploy` – Publish `dist/` to the `gh-pages` branch using `gh-pages`
 
 ## Building for production
@@ -66,11 +70,9 @@ yarn deploy
 ## Configuration and environment
 - Routing uses `react-router-dom` (v6). The dev server is configured with `historyApiFallback` so deep links work locally.
 - `webpack.config.ts` reads `HOST` and `PORT` from the environment if set.
-- The app fetches recipe metadata and content directly from GitHub:
-  - API base: `https://api.github.com`
-  - Raw content: `https://raw.githubusercontent.com`
-
-If you encounter GitHub API rate limiting while developing, you can supply your own GitHub token by updating `src/constants.ts` (this project currently reads the token from that file). Never commit personal secrets to version control in your own forks; prefer environment-based configuration.
+- Static data generation: At build time, a script fetches recipe metadata and markdown from the recipes-md repo and writes `src/generated/recipes.json`. The app then renders from that static data and no longer fetches content at runtime.
+  - Optional token: To avoid rate limits during generation, set `GITHUB_TOKEN` (or `GH_TOKEN` / `RECIPES_GITHUB_TOKEN`) in your environment.
+  - Incremental: The generator checks latest upstream commit SHAs for `recipes/` and `images/` paths and skips regeneration when unchanged.
 
 ## Project structure
 ```

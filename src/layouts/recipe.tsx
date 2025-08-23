@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown'
 import { useParams } from 'react-router-dom';
 import Navigation from './navigation';
+// Note: generated at build-time. During development, run `yarn generate` first.
 import recipesData from '../generated/recipes.json';
 
 export const EDIT_BASE_URL = 'https://github.com/akofink/recipes-md/edit/main/recipes'
