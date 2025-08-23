@@ -91,6 +91,13 @@ src/
   npx prettier --write .
   ```
 
+## Common warnings
+- Browserslist: caniuse-lite is outdated – this is informational. Update the local DB:
+  ```bash
+  npx update-browserslist-db@latest
+  ```
+- Sass deprecations from Bootstrap – warnings about abs(), percentage units, or unitless values come from Bootstrap’s SCSS. They don’t break the build. They’ll be resolved in future Bootstrap releases. You can ignore them during development.
+
 ## Troubleshooting
 - Port already in use: set a different `PORT` when starting, e.g. `PORT=4001 yarn start`.
 - Blank page on refresh in production: ensure GitHub Pages is serving the `gh-pages` branch; client-side routing relies on `index.html` being returned for unknown paths.
