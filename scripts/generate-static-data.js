@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /*
   Generate static recipe data at build time by fetching from the recipes-md repo.
-  Produces src/generated/recipes.json with fields: name, filename, imageName (optional), markdown.
+  - Produces src/generated/recipes.json with entries: { name, filename, imageName, markdown }
+  - Writes src/generated/meta.json with source commit SHAs used to generate the data
+  - Skips generation if current local meta matches latest upstream SHAs (recipes/ and images/ paths)
 */
 const fs = require('fs');
 const path = require('path');
@@ -12,9 +14,11 @@ const REPO = 'recipes-md';
 const BRANCH = 'main';
 const RAW_BASE = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}`;
 const CONTENTS_BASE = `${GH_API}/repos/${OWNER}/${REPO}/contents`;
+const COMMITS_BASE = `${GH_API}/repos/${OWNER}/${REPO}/commits`;
 
 const OUT_DIR = path.resolve(__dirname, '..', 'src', 'generated');
 const OUT_FILE = path.join(OUT_DIR, 'recipes.json');
+const META_FILE = path.join(OUT_DIR, 'meta.json');
 
 function authHeaders() {
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || process.env.RECIPES_GITHUB_TOKEN;
@@ -38,6 +42,37 @@ async function fetchText(url) {
     throw new Error(`Failed to fetch ${url}: ${res.status} ${res.statusText} - ${text}`);
   }
   return res.text();
+}
+
+async function latestCommitShaForPath(p) {
+  const url = `${COMMITS_BASE}?sha=${encodeURIComponent(BRANCH)}&path=${encodeURIComponent(p)}&per_page=1`;
+  const items = await fetchJson(url);
+  if (!Array.isArray(items) || items.length === 0) return null;
+  return items[0]?.sha || null;
+}
+
+async function branchHeadSha() {
+  const url = `${COMMITS_BASE}/${encodeURIComponent(BRANCH)}`;
+  const item = await fetchJson(url);
+  return item?.sha || null;
+}
+
+function readLocalMeta() {
+  try {
+    const raw = fs.readFileSync(META_FILE, 'utf8');
+    return JSON.parse(raw);
+  } catch (_) {
+    return null;
+  }
+}
+
+function fileExists(p) {
+  try {
+    fs.accessSync(p, fs.constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function listRecipes() {
@@ -65,6 +100,32 @@ async function fetchMarkdown(filename) {
 }
 
 async function main() {
+  // Determine if generation is needed by comparing upstream SHAs with local meta
+  console.log('[generate-static-data] Checking upstream SHAs...');
+  let [recipesSha, imagesSha] = await Promise.all([
+    latestCommitShaForPath('recipes'),
+    latestCommitShaForPath('images'),
+  ]);
+  // Fallback: use branch head if path queries returned null
+  if (!recipesSha || !imagesSha) {
+    const head = await branchHeadSha();
+    recipesSha = recipesSha || head;
+    imagesSha = imagesSha || head;
+  }
+  const localMeta = readLocalMeta();
+  const outFileExists = fileExists(OUT_FILE);
+  if (
+    outFileExists &&
+    localMeta &&
+    localMeta.source &&
+    localMeta.source.branch === BRANCH &&
+    localMeta.source.recipesSha === recipesSha &&
+    localMeta.source.imagesSha === imagesSha
+  ) {
+    console.log('[generate-static-data] Up to date. Skipping generation.');
+    return;
+  }
+
   console.log('[generate-static-data] Fetching recipe list...');
   const recipes = await listRecipes();
   console.log(`[generate-static-data] Found ${recipes.length} recipes`);
@@ -81,7 +142,13 @@ async function main() {
 
   await fs.promises.mkdir(OUT_DIR, { recursive: true });
   await fs.promises.writeFile(OUT_FILE, JSON.stringify(out, null, 2), 'utf8');
-  console.log(`[generate-static-data] Wrote ${OUT_FILE}`);
+  const meta = {
+    source: { owner: OWNER, repo: REPO, branch: BRANCH, recipesSha, imagesSha },
+    generatedAt: new Date().toISOString(),
+    count: out.length,
+  };
+  await fs.promises.writeFile(META_FILE, JSON.stringify(meta, null, 2), 'utf8');
+  console.log(`[generate-static-data] Wrote ${OUT_FILE} and ${META_FILE}`);
 }
 
 main().catch((err) => {
