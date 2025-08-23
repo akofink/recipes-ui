@@ -19,7 +19,7 @@ export const RecipeCard: FC<GithubFile> = ({ name }) => {
     return (<Col><Card className='recipe-card'>
         <Link to={`/${name}`} className='clean-link overflow-hidden'>
             <Card.Img
-                className={`recipe-card-img ${images === undefined ? 'spin' : ''}`}
+                className={'recipe-card-img'}
                 src={imageSrc}
                 variant='top' />
             <Card.Body className='recipe-card-body'>
