@@ -169,7 +169,7 @@ async function main() {
       listImagesFor(name).catch(() => []),
       fetchMarkdown(filename),
     ]);
-    out.push({ name, filename, imageName: images[0] || null, markdown });
+    out.push({ name, filename, imageName: images[0] || null, imageNames: images, markdown });
   }
 
   await fs.promises.mkdir(OUT_DIR, { recursive: true });
