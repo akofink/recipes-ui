@@ -4,24 +4,23 @@ import {
 } from 'react-bootstrap';
 import RecipeCard from '../components/recipe-card';
 
-import { RECIPESMD_CONTENTS } from '../constants';
-import { GithubFile } from '../types';
-import { fetchWithGithubAuthToJson, jsonToFiles } from '../util/fetch';
+import recipesData from '../generated/recipes.json';
+import { GithubFile, RecipeData } from '../types';
 import Navigation from './navigation';
 
 export const Recipes: FC = () => {
-  const [recipes, setRecipes] = useState<GithubFile[]>([]);
+  const [recipes, setRecipes] = useState<RecipeData[]>([]);
 
   useEffect(() => {
-    fetchWithGithubAuthToJson(`${RECIPESMD_CONTENTS}/recipes`)
-      .then(json => setRecipes(jsonToFiles(json)));
+    // Static data loaded from generated JSON at build time
+    setRecipes(recipesData as unknown as RecipeData[]);
   }, []);
 
   const fileToCard: (props: GithubFile) => ReactElement = (props) => (
     <RecipeCard key={props.name} {...props} />
   );
-  const makeCards: (recipes: GithubFile[]) => ReactElement[] = recipes => recipes.map(fileToCard);
-  const cards: ReactElement[] = useMemo(() => makeCards(recipes), [recipes]);
+  const makeCards: (recipes: GithubFile[]) => ReactElement[] = recipes => recipes.map(({ name }) => fileToCard({ name }));
+  const cards: ReactElement[] = useMemo(() => makeCards(recipes as unknown as GithubFile[]), [recipes]);
 
   return (
     <Navigation>

@@ -1,32 +1,20 @@
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import React, { FC, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
     Card, Col, Row
 } from 'react-bootstrap';
-import { RECIPESMD_CONTENTS, RECIPESMD_RAW } from '../constants';
+import { RECIPESMD_RAW } from '../constants';
 import { GithubFile } from '../types';
-import { fetchWithGithubAuthToJson, jsonToFiles } from '../util/fetch';
+import recipesData from '../generated/recipes.json';
 
 export const RecipeCard: FC<GithubFile> = ({ name }) => {
-    const [images, setImages] = useState<GithubFile[] | undefined>();
+    const imageName = (recipesData as any[])?.find(r => r.name === name)?.imageName || null;
     const imageSrc = useMemo(
         () => (
-            images === undefined && './spinner.svg' ||
-            images && (
-                (!images.length && './empty.svg') ||
-                `${RECIPESMD_RAW}/images/${name}/${images[0].name}`
-            )
+            imageName ? `${RECIPESMD_RAW}/images/${name}/${imageName}` : './empty.svg'
         ),
-        [images]
+        [imageName, name]
     )
-
-    useEffect(() => {
-        if (name) {
-            fetchWithGithubAuthToJson(`${RECIPESMD_CONTENTS}/images/${name}`)
-                .then(json => setImages(jsonToFiles(json)))
-                .catch(response => { if(response.status === 404) { setImages([]); } })
-        }
-    }, [name])
 
     return (<Col><Card className='recipe-card'>
         <Link to={`/${name}`} className='clean-link overflow-hidden'>

@@ -70,7 +70,8 @@
     "yarn": "^1.22.22"
   },
   "scripts": {
-    "build": "webpack",
+    "generate": "node scripts/generate-static-data.js",
+    "build": "cross-env NODE_ENV=production webpack",
     "build-dev": "webpack",
     "deploy": "gh-pages deploy -d dist",
     "watch": "webpack --watch",

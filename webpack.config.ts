@@ -17,8 +17,17 @@ const devExports = {
 
 const config: Configuration = {
   mode,
-  entry: {
-    index: resolve(__dirname, './src/index.tsx'),
+  entry: async () => {
+    // generate static data at build in production mode
+    if (mode === 'production') {
+      // Lazy require to avoid impacting dev server startup if not needed
+      const { spawnSync } = await import('child_process');
+      const res = spawnSync('node', ['scripts/generate-static-data.js'], { stdio: 'inherit' });
+      if (res.status !== 0) {
+        throw new Error(`Failed to generate static data (exit ${res.status})`);
+      }
+    }
+    return { index: resolve(__dirname, './src/index.tsx') };
   },
   module: {
     rules: [
