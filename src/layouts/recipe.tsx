@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown'
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import Navigation from './navigation';
 import { Row, Col, Modal } from 'react-bootstrap';
 import { RECIPESMD_RAW } from '../constants';
@@ -18,9 +18,18 @@ export const Recipe = () => {
   ), [filename])
   const markdown = recipe?.markdown || ''
   const imageNames: string[] = (recipe?.imageNames || []) as string[]
-  const [activeImage, setActiveImage] = useState<string | null>(null);
-  const handleOpen = (img: string) => setActiveImage(img);
-  const handleClose = () => setActiveImage(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeImage = searchParams.get('img');
+  const handleOpen = (img: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('img', img);
+    setSearchParams(next, { replace: false });
+  };
+  const handleClose = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('img');
+    setSearchParams(next, { replace: false });
+  };
 
   return (
     <Navigation>

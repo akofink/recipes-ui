@@ -1,4 +1,5 @@
 import { FC, ReactElement, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Container, Row, Form
 } from 'react-bootstrap';
@@ -11,12 +12,21 @@ import Navigation from './navigation';
 
 export const Recipes: FC = () => {
   const [recipes, setRecipes] = useState<RecipeData[]>([]);
-  const [query, setQuery] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get('q') || '');
 
   useEffect(() => {
     // Static data loaded from generated JSON at build time
     setRecipes(recipesData as unknown as RecipeData[]);
   }, []);
+
+  // Keep local state in sync with URL (back/forward navigation)
+  useEffect(() => {
+    const qParam = searchParams.get('q') || '';
+    if (qParam !== query) {
+      setQuery(qParam);
+    }
+  }, [searchParams]);
 
   const fileToCard: (props: GithubFile) => ReactElement = (props) => (
     <RecipeCard key={props.name} {...props} />
@@ -38,7 +48,17 @@ export const Recipes: FC = () => {
             type="search"
             placeholder="Search recipes..."
             value={query}
-            onChange={(e) => setQuery(e.currentTarget.value)}
+            onChange={(e) => {
+              const v = e.currentTarget.value;
+              setQuery(v);
+              const next = new URLSearchParams(searchParams);
+              if (v.trim()) {
+                next.set('q', v);
+              } else {
+                next.delete('q');
+              }
+              setSearchParams(next, { replace: true });
+            }}
           />
         </Form>
         <Row xs={2} sm={3} md={4} lg={5}>{cards}</Row>
