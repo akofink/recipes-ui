@@ -25,8 +25,40 @@ function authHeaders() {
   return token ? { Authorization: `token ${token}` } : {};
 }
 
+const MAX_WAIT_MS = Number.parseInt(process.env.GENERATE_MAX_WAIT_MS || '120000', 10);
+
+function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
+
+async function robustFetch(url, init = {}, attempt = 1) {
+  const res = await fetch(url, { headers: { ...authHeaders(), 'User-Agent': 'recipes-ui-build-script', ...(init.headers || {}) }, ...init });
+  if ((res.status === 403 || res.status === 429)) {
+    const retryAfter = Number.parseInt(res.headers.get('retry-after') || '0', 10);
+    const remaining = res.headers.get('x-ratelimit-remaining');
+    const reset = Number.parseInt(res.headers.get('x-ratelimit-reset') || '0', 10); // epoch seconds
+    const now = Date.now();
+    const resetMs = reset ? Math.max(0, reset * 1000 - now) : 0;
+    const waitMs = Math.max(retryAfter ? retryAfter * 1000 : 0, resetMs, 1000);
+    if ((retryAfter || remaining === '0' || reset) && Number.isFinite(MAX_WAIT_MS) && waitMs > MAX_WAIT_MS) {
+      const msg = `Rate limited. Need to wait ~${Math.ceil(waitMs / 1000)}s; exceeds cap ${Math.ceil(MAX_WAIT_MS / 1000)}s. Set GITHUB_TOKEN or increase GENERATE_MAX_WAIT_MS.`;
+      throw new Error(msg);
+    }
+    if (retryAfter || remaining === '0' || reset) {
+      console.warn(`[generate-static-data] Rate limited (HTTP ${res.status}). Waiting ~${Math.ceil(waitMs / 1000)}s before retry...`);
+      await sleep(waitMs);
+      return robustFetch(url, init, attempt + 1);
+    }
+  }
+  if (!res.ok && res.status >= 500 && attempt < 3) {
+    const backoff = attempt * 1000;
+    console.warn(`[generate-static-data] Server error ${res.status}. Retrying in ${backoff}ms...`);
+    await sleep(backoff);
+    return robustFetch(url, init, attempt + 1);
+  }
+  return res;
+}
+
 async function fetchJson(url) {
-  const res = await fetch(url, { headers: { ...authHeaders(), 'User-Agent': 'recipes-ui-build-script' } });
+  const res = await robustFetch(url);
   if (res.status === 404) return null;
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -36,7 +68,7 @@ async function fetchJson(url) {
 }
 
 async function fetchText(url) {
-  const res = await fetch(url, { headers: { ...authHeaders(), 'User-Agent': 'recipes-ui-build-script' } });
+  const res = await robustFetch(url);
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Failed to fetch ${url}: ${res.status} ${res.statusText} - ${text}`);
