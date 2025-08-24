@@ -1,4 +1,4 @@
-import "./App.scss";
+import "./App.css";
 import { Recipes } from "./layouts/recipes";
 
 const App = () => {

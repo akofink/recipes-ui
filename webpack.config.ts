@@ -47,6 +47,16 @@ const config: Configuration = {
         type: "asset/resource",
       },
       {
+        test: /\.css$/i,
+        use: [
+          mode === "production" ? MiniCssExtractPlugin.loader : "style-loader",
+          {
+            loader: "css-loader",
+            options: { sourceMap: mode !== "production" },
+          },
+        ],
+      },
+      {
         test: /\.s[ac]ss$/i,
         use: [
           // Extract CSS in production, fallback to style-loader in dev

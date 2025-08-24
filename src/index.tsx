@@ -1,5 +1,7 @@
 import { StrictMode } from "react";
 import ReactDOM from "react-dom";
+// Include Bootstrap CSS from node_modules to avoid compiling SCSS
+import "bootstrap/dist/css/bootstrap.min.css";
 import "./index.css";
 
 // Google Analytics injection

@@ -1,6 +1,6 @@
 import { FC, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Card, Col, OverlayTrigger, Tooltip } from "react-bootstrap";
+import { Card, Col } from "react-bootstrap";
 import { RECIPESMD_RAW } from "../constants";
 import { GithubFile, RecipeData } from "../types";
 import recipesData from "../generated/recipes.json";
@@ -28,14 +28,9 @@ export const RecipeCard: FC<GithubFile> = ({ name }) => {
             variant="top"
           />
           <Card.Body className="recipe-card-body">
-            <OverlayTrigger
-              placement="top"
-              overlay={<Tooltip id={`tt-${name}`}>{name}</Tooltip>}
-            >
-              <Card.Title className="recipe-card-title" as="h6">
-                {name}
-              </Card.Title>
-            </OverlayTrigger>
+            <Card.Title className="recipe-card-title" as="h6" title={name}>
+              {name}
+            </Card.Title>
           </Card.Body>
         </Link>
       </Card>
