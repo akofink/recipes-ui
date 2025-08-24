@@ -35,7 +35,7 @@ jobs:
             ${{ runner.os }}-
       - name: Setup Pages
         uses: actions/configure-pages@v5
-      - name: Build and test
+      - name: Build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
