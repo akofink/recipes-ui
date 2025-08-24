@@ -86,6 +86,7 @@ const config: Configuration = {
         ? "[name].[contenthash:8].chunk.js"
         : "[name].chunk.js",
     path: resolve(__dirname, "dist"),
+    publicPath: "/",
     clean: true,
   },
   optimization: {
