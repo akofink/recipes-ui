@@ -128,27 +128,27 @@ const config: Configuration = {
       patterns: [
         {
           from: resolve(__dirname, "public/CNAME"),
-          to: resolve(__dirname, "dist/CNAME"),
+          to: "CNAME",
         },
         {
           from: resolve(__dirname, "public/404.html"),
-          to: resolve(__dirname, "dist/404.html"),
+          to: "404.html",
         },
         {
           from: resolve(__dirname, "public/favicon.svg"),
-          to: resolve(__dirname, "dist/favicon.svg"),
+          to: "favicon.svg",
         },
         {
           from: resolve(__dirname, "public/favicon.ico"),
-          to: resolve(__dirname, "dist/favicon.ico"),
+          to: "favicon.ico",
         },
         {
           from: resolve(__dirname, "public/empty.svg"),
-          to: resolve(__dirname, "dist/empty.svg"),
+          to: "empty.svg",
         },
         {
           from: resolve(__dirname, "public/spinner.svg"),
-          to: resolve(__dirname, "dist/spinner.svg"),
+          to: "spinner.svg",
         },
       ],
     }),
