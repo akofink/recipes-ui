@@ -120,34 +120,33 @@ const config: Configuration = {
         ]
       : []),
     new HtmlWebpackPlugin({
-      template: resolve(__dirname, "public/index.html"),
+      template: "public/index.html",
       filename: "index.html",
       inject: "body",
     }),
     new CopyWebpackPlugin({
       patterns: [
         {
-          from: resolve(__dirname, "public/CNAME"),
-          to: "CNAME",
+          from: "public/CNAME",
         },
         {
-          from: resolve(__dirname, "public/404.html"),
+          from: "public/404.html",
           to: "404.html",
         },
         {
-          from: resolve(__dirname, "public/favicon.svg"),
+          from: "public/favicon.svg",
           to: "favicon.svg",
         },
         {
-          from: resolve(__dirname, "public/favicon.ico"),
+          from: "public/favicon.ico",
           to: "favicon.ico",
         },
         {
-          from: resolve(__dirname, "public/empty.svg"),
+          from: "public/empty.svg",
           to: "empty.svg",
         },
         {
-          from: resolve(__dirname, "public/spinner.svg"),
+          from: "public/spinner.svg",
           to: "spinner.svg",
         },
       ],
