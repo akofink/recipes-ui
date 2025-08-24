@@ -129,7 +129,11 @@ async function listRecipes() {
 async function listImagesFor(name) {
   const url = `${CONTENTS_BASE}/images/${encodeURIComponent(name)}`;
   const items = await fetchJson(url);
-  if (!Array.isArray(items)) return [];
+  // 404 means no images dir for this recipe
+  if (items === null) return [];
+  if (!Array.isArray(items)) {
+    throw new Error(`Unexpected response listing images for ${name}: ${JSON.stringify(items)}`);
+  }
   return items
     .filter((it) => it && typeof it.name === 'string')
     .map((it) => it.name)
@@ -181,10 +185,14 @@ async function main() {
   const out = [];
   for (const { name, filename } of recipes) {
     console.log(`[generate-static-data] Fetching ${filename}...`);
-    const [images, markdown] = await Promise.all([
-      listImagesFor(name).catch(() => []),
-      fetchMarkdown(filename),
-    ]);
+    let images = [];
+    try {
+      images = await listImagesFor(name);
+    } catch (e) {
+      console.warn(`[generate-static-data] Warning: failed to list images for ${name}:`, e?.message || e);
+      // Continue without images; markdown will still be fetched
+    }
+    const markdown = await fetchMarkdown(filename);
     out.push({ name, filename, imageName: images[0] || null, imageNames: images, markdown });
   }
 
