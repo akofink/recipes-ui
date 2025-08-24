@@ -1,6 +1,6 @@
-import { FC } from "react";
+import { FC, useEffect } from "react";
 import { Nav, Navbar } from "react-bootstrap";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 const NEW_RECIPE_TEMPLATE = `Yield: 4 servings
 
@@ -33,6 +33,21 @@ Total time: 30 minutes
 export const ADD_RECIPE_URL = `https://github.com/akofink/recipes-md/new/main/recipes?filename=new_recipe.md&value=${encodeURIComponent(NEW_RECIPE_TEMPLATE)}`;
 
 export const Navigation: FC = ({ children }) => {
+    const location = useLocation();
+    useEffect(() => {
+        const GA_ID = 'G-0WWZ7MSYKW';
+        const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+        if (isLocal) return;
+        const gtag = (window as any).gtag;
+        if (typeof gtag === 'function') {
+            gtag('event', 'page_view', {
+                page_title: document.title,
+                page_location: window.location.href,
+                page_path: location.pathname + location.search,
+                send_to: GA_ID,
+            });
+        }
+    }, [location.pathname, location.search]);
     return (<>
         <Navbar>
             <Link to='/' className='logo-link'>
