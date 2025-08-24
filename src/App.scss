@@ -55,6 +55,15 @@
     height: 50px;
 }
 
+.recipe-card-title {
+    display: block;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+}
+
 .col {
     padding: 0 0.2rem;
 }
