@@ -126,24 +126,12 @@ const config: Configuration = {
     }),
     new CopyWebpackPlugin({
       patterns: [
-        {
-          from: "public/CNAME",
-        },
-        {
-          from: "public/404.html",
-        },
-        {
-          from: "public/favicon.svg",
-        },
-        {
-          from: "public/favicon.ico",
-        },
-        {
-          from: "public/empty.svg",
-        },
-        {
-          from: "public/spinner.svg",
-        },
+        "public/CNAME",
+        "public/404.html",
+        "public/favicon.svg",
+        "public/favicon.ico",
+        "public/empty.svg",
+        "public/spinner.svg",
       ],
     }),
   ],
