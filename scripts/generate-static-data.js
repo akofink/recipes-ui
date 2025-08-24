@@ -20,8 +20,11 @@ const COMPARE_BASE = `${GH_API}/repos/${OWNER}/${REPO}/compare`;
 const OUT_DIR = path.resolve(__dirname, "..", "src", "generated");
 const OUT_FILE = path.join(OUT_DIR, "recipes.json");
 const META_FILE = path.join(OUT_DIR, "meta.json");
-const STATIC_DIR = path.resolve(__dirname, "..", "public", "static");
+const GENERATED_PUBLIC_DIR = path.resolve(__dirname, "..", ".generated_public");
+const STATIC_DIR = path.join(GENERATED_PUBLIC_DIR, "static");
+const NOSCRIPT_JSON = path.join(GENERATED_PUBLIC_DIR, "noscript.json");
 const EDIT_BASE_URL = "https://github.com/akofink/recipes-md/edit/main/recipes";
+const ADD_RECIPE_URL = "https://github.com/akofink/recipes-md/new/main/recipes";
 const SCHEMA_VERSION = 3;
 
 function authHeaders() {
