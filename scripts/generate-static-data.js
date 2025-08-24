@@ -128,16 +128,22 @@ async function listRecipes() {
 
 async function listImagesFor(name) {
   const url = `${CONTENTS_BASE}/images/${encodeURIComponent(name)}`;
+  console.log(`[generate-static-data] Listing images for ${name} ...`);
   const items = await fetchJson(url);
   // 404 means no images dir for this recipe
-  if (items === null) return [];
+  if (items === null) {
+    console.log(`[generate-static-data] No images directory for ${name}`);
+    return [];
+  }
   if (!Array.isArray(items)) {
     throw new Error(`Unexpected response listing images for ${name}: ${JSON.stringify(items)}`);
   }
-  return items
+  const names = items
     .filter((it) => it && typeof it.name === 'string')
     .map((it) => it.name)
     .sort();
+  console.log(`[generate-static-data] Found ${names.length} image(s) for ${name}`);
+  return names;
 }
 
 async function fetchMarkdown(filename) {
