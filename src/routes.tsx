@@ -1,15 +1,23 @@
-import App from "./App";
-import Error from "./layouts/error";
-import { Recipe } from "./layouts/recipe";
+import { lazy, Suspense } from "react";
+
+const App = lazy(() => import("./App"));
+const Error = lazy(() => import("./layouts/error"));
+const Recipe = lazy(() =>
+  import("./layouts/recipe").then((m) => ({ default: m.Recipe })),
+);
+
+const suspense = (el: JSX.Element) => (
+  <Suspense fallback={<div>Loading…</div>}>{el}</Suspense>
+);
 
 export default [
   {
     path: "/",
-    element: <App />,
-    errorElement: <Error />,
+    element: suspense(<App />),
+    errorElement: suspense(<Error />),
   },
   {
     path: "/:fileBasename",
-    element: <Recipe />,
+    element: suspense(<Recipe />),
   },
 ];
