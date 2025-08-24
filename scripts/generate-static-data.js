@@ -95,10 +95,6 @@ async function compareCommits(base, head) {
   const url = `${COMPARE_BASE}/${encodeURIComponent(base)}...${encodeURIComponent(head)}`;
   return fetchJson(url);
 }
-  const url = `${COMMITS_BASE}/${encodeURIComponent(BRANCH)}`;
-  const item = await fetchJson(url);
-  return item?.sha || null;
-}
 
 function readLocalMeta() {
   try {
