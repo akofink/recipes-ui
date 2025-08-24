@@ -10,7 +10,7 @@
 
 # production
 /build
-/dist/
+/dist/*.bundle.js*
 
 # generated at build time
 /src/generated/
