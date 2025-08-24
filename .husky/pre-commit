@@ -1,2 +1,3 @@
+#!/usr/bin/env sh
 yarn typecheck || exit 1
 yarn lint-staged || exit 1
