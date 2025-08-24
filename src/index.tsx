@@ -1,4 +1,4 @@
-import React from "react";
+import { StrictMode } from "react";
 import ReactDOM from "react-dom";
 import "./index.css";
 
@@ -14,12 +14,16 @@ import "./index.css";
     s.async = true;
     s.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`;
     document.head.appendChild(s);
-    (window as any).dataLayer = (window as any).dataLayer || [];
-    (window as any).gtag = function () {
-      (window as any).dataLayer.push(arguments);
+    const w = window as unknown as {
+      dataLayer: unknown[];
+      gtag: (...args: unknown[]) => void;
     };
-    (window as any).gtag("js", new Date());
-    (window as any).gtag("config", GA_ID);
+    w.dataLayer = w.dataLayer || [];
+    w.gtag = (...args: unknown[]) => {
+      w.dataLayer.push(args);
+    };
+    w.gtag("js", new Date());
+    w.gtag("config", GA_ID);
   } catch (e) {
     // no-op
   }
@@ -30,8 +34,8 @@ import routes from "./routes";
 const router = createBrowserRouter(routes);
 
 ReactDOM.render(
-  <React.StrictMode>
+  <StrictMode>
     <RouterProvider router={router} />
-  </React.StrictMode>,
+  </StrictMode>,
   document.getElementById("root"),
 );

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import { useParams, useSearchParams } from "react-router-dom";
 import Navigation from "./navigation";
@@ -6,6 +6,7 @@ import { Row, Col, Modal } from "react-bootstrap";
 import { RECIPESMD_RAW } from "../constants";
 // Note: generated at build-time. During development, run `yarn generate` first.
 import recipesData from "../generated/recipes.json";
+import { RecipeData } from "../types";
 
 export const EDIT_BASE_URL =
   "https://github.com/akofink/recipes-md/edit/main/recipes";
@@ -14,10 +15,10 @@ export const Recipe = () => {
   const { fileBasename } = useParams();
   const name = fileBasename?.replace(/\/$/, "");
   const filename = `${name}.md`;
-  const recipe = useMemo(
-    () => (recipesData as any[])?.find((r) => r.filename === filename) || null,
-    [filename],
-  );
+  const recipe = useMemo(() => {
+    const list = recipesData as unknown as RecipeData[];
+    return list.find((r) => r.filename === filename) || null;
+  }, [filename]);
   const markdown = recipe?.markdown || "";
   const imageNames: string[] = (recipe?.imageNames || []) as string[];
   const [searchParams, setSearchParams] = useSearchParams();

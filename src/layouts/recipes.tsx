@@ -1,11 +1,11 @@
-import { FC, ReactElement, useEffect, useMemo, useState } from "react";
+import { FC, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Container, Row, Form } from "react-bootstrap";
 import RecipeCard from "../components/recipe-card";
 
 // Note: generated at build-time. During development, run `yarn generate` first.
 import recipesData from "../generated/recipes.json";
-import { GithubFile, RecipeData } from "../types";
+import { RecipeData } from "../types";
 import Navigation from "./navigation";
 
 export const Recipes: FC = () => {
@@ -24,21 +24,16 @@ export const Recipes: FC = () => {
     if (qParam !== query) {
       setQuery(qParam);
     }
-  }, [searchParams]);
+  }, [searchParams, query]);
 
-  const fileToCard: (props: GithubFile) => ReactElement = (props) => (
-    <RecipeCard key={props.name} {...props} />
-  );
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return recipes;
     return recipes.filter((r) => r.name.toLowerCase().includes(q));
   }, [recipes, query]);
 
-  const makeCards: (recipes: GithubFile[]) => ReactElement[] = (recipes) =>
-    recipes.map(({ name }) => fileToCard({ name }));
-  const cards: ReactElement[] = useMemo(
-    () => makeCards(filtered as unknown as GithubFile[]),
+  const cards = useMemo(
+    () => filtered.map((r) => <RecipeCard key={r.name} name={r.name} />),
     [filtered],
   );
 

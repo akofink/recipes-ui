@@ -1,13 +1,15 @@
-import React, { FC, useMemo } from "react";
+import { FC, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Card, Col, Row, OverlayTrigger, Tooltip } from "react-bootstrap";
+import { Card, Col, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { RECIPESMD_RAW } from "../constants";
-import { GithubFile } from "../types";
+import { GithubFile, RecipeData } from "../types";
 import recipesData from "../generated/recipes.json";
 
 export const RecipeCard: FC<GithubFile> = ({ name }) => {
-  const imageName =
-    (recipesData as any[])?.find((r) => r.name === name)?.imageName || null;
+  const recipe = (recipesData as unknown as RecipeData[]).find(
+    (r) => r.name === name,
+  );
+  const imageName = recipe?.imageName ?? null;
   const imageSrc = useMemo(
     () =>
       imageName

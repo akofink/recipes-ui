@@ -40,7 +40,9 @@ export const Navigation: FC = ({ children }) => {
       window.location.hostname,
     );
     if (isLocal) return;
-    const gtag = (window as any).gtag;
+    type Gtag = (command: string, ...params: unknown[]) => void;
+    const w = window as unknown as { gtag?: Gtag };
+    const gtag = w.gtag;
     if (typeof gtag === "function") {
       gtag("event", "page_view", {
         page_title: document.title,
