@@ -11,8 +11,6 @@
 # production
 /build
 /dist/
-/.generated_public/
-
 
 # generated at build time
 /src/generated/
