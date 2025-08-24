@@ -248,6 +248,100 @@ function renderStaticPage(name, images, html, filename) {
 }
 
 async function writeStatic(recipes) {
+  // Try to SSR the React index (Recipes inside Navigation) to static HTML
+  try {
+    require("ts-node").register({ transpileOnly: true });
+    const React = require("react");
+    const { renderToStaticMarkup } = require("react-dom/server");
+    const { StaticRouter } = require("react-router-dom/server");
+    const Navigation = require("../src/layouts/navigation").default;
+    const Recipes = require("../src/layouts/recipes").Recipes;
+
+    const tree = React.createElement(
+      StaticRouter,
+      { location: "/" },
+      React.createElement(Navigation, null, React.createElement(Recipes, null)),
+    );
+    let bodyHtml = renderToStaticMarkup(tree);
+    // Rewrite SPA links to static pages for no-JS experience
+    bodyHtml = bodyHtml.replace(
+      /href="\/(?!static\/)([^"\/][^"#?]*)"/g,
+      'href="/static/$1/"',
+    );
+
+    const shell = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recipes</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { height: 100%; }
+    .clean-link { text-decoration: none; color: inherit; }
+    .logo-link { text-decoration: none; color: inherit; padding: 0 1rem; }
+    .app-container-div { height: 100%; border-style: double; border-color: cornsilk; border-top-width: .5rem; padding: 1rem 10% 5rem; }
+    .recipe-card-img { height: 150px; object-fit: cover; }
+    .recipe-card { overflow: hidden; margin: .5rem 0; }
+    .recipe-card-body { height: 50px; }
+    .recipe-card-title { display: block; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
+  </style>
+</head>
+<body>
+${bodyHtml}
+</body>
+</html>`;
+    await fs.promises.mkdir(STATIC_DIR, { recursive: true });
+    await fs.promises.writeFile(
+      path.join(STATIC_DIR, "index.html"),
+      shell,
+      "utf8",
+    );
+  } catch (e) {
+    console.warn(
+      "[generate-static-data] SSR of static index failed; falling back to simple list:",
+      e?.message || e,
+    );
+    // Also write static index listing
+    try {
+      const links = (recipes || [])
+        .map((r) => `<li><a href="/static/${r.name}/">${r.name}</a></li>`)
+        .join("\n");
+      const index = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recipes – Static Index</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container-div">
+    <nav class="mb-3 d-flex align-items-center">
+      <a href="/" class="logo-link"><strong>Recipes</strong></a>
+    </nav>
+    <main>
+      <h1>Recipes</h1>
+      <ul>
+        ${links}
+      </ul>
+    </main>
+  </div>
+</body>
+</html>`;
+      await fs.promises.mkdir(STATIC_DIR, { recursive: true });
+      await fs.promises.writeFile(
+        path.join(STATIC_DIR, "index.html"),
+        index,
+        "utf8",
+      );
+    } catch (e2) {
+      console.warn(
+        "[generate-static-data] Failed to write static index:",
+        e2?.message || e2,
+      );
+    }
+  }
   // Also write static index listing
   try {
     const links = (recipes || [])
