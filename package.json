@@ -75,7 +75,13 @@
     "build-dev": "webpack",
     "deploy": "gh-pages deploy -d dist",
     "watch": "webpack --watch",
-    "start": "webpack serve"
+    "start": "webpack serve",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "yarn typecheck && yarn lint && yarn format:check",
+    "prepare": "husky install"
   },
   "eslintConfig": {
     "extends": [
@@ -117,6 +123,13 @@
     "webpack-cli": "^5",
     "webpack-dev-middleware": "^5.3.1",
     "webpack-dev-server": "^5.2.1"
+  },
+  "lint-staged": {
+    "**/*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "**/*.{js,jsx,json,css,scss,md}": "prettier --write"
   },
   "jest": {
     "roots": [
