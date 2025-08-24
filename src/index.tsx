@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 // Include Bootstrap CSS from node_modules to avoid compiling SCSS
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./index.css";
+import "./App.css";
 
 // Google Analytics injection
 (function initGA() {
