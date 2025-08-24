@@ -131,23 +131,18 @@ const config: Configuration = {
         },
         {
           from: "public/404.html",
-          to: "404.html",
         },
         {
           from: "public/favicon.svg",
-          to: "favicon.svg",
         },
         {
           from: "public/favicon.ico",
-          to: "favicon.ico",
         },
         {
           from: "public/empty.svg",
-          to: "empty.svg",
         },
         {
           from: "public/spinner.svg",
-          to: "spinner.svg",
         },
       ],
     }),
