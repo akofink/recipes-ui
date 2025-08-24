@@ -33,39 +33,47 @@ Total time: 30 minutes
 export const ADD_RECIPE_URL = `https://github.com/akofink/recipes-md/new/main/recipes?filename=new_recipe.md&value=${encodeURIComponent(NEW_RECIPE_TEMPLATE)}`;
 
 export const Navigation: FC = ({ children }) => {
-    const location = useLocation();
-    useEffect(() => {
-        const GA_ID = 'G-0WWZ7MSYKW';
-        const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
-        if (isLocal) return;
-        const gtag = (window as any).gtag;
-        if (typeof gtag === 'function') {
-            gtag('event', 'page_view', {
-                page_title: document.title,
-                page_location: window.location.href,
-                page_path: location.pathname + location.search,
-                send_to: GA_ID,
-            });
-        }
-    }, [location.pathname, location.search]);
-    return (<>
-        <Navbar>
-            <Link to='/' className='logo-link'>
-                <Navbar.Brand>
-                    <img src={'/favicon.svg'} alt="logo" width={24} height={24} style={{ marginRight: 10, verticalAlign: 'middle' }} />
-                    akRecipes
-                </Navbar.Brand>
-            </Link>
-            <Navbar.Collapse className='justify-content-end'>
-                <Nav.Link href={ADD_RECIPE_URL} target='_blank'>
-                    Add a recipe
-                </Nav.Link>
-            </Navbar.Collapse>
-        </Navbar>
-        <div className="app-container-div">
-            { children }
-        </div>
-    </>);
+  const location = useLocation();
+  useEffect(() => {
+    const GA_ID = "G-0WWZ7MSYKW";
+    const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(
+      window.location.hostname,
+    );
+    if (isLocal) return;
+    const gtag = (window as any).gtag;
+    if (typeof gtag === "function") {
+      gtag("event", "page_view", {
+        page_title: document.title,
+        page_location: window.location.href,
+        page_path: location.pathname + location.search,
+        send_to: GA_ID,
+      });
+    }
+  }, [location.pathname, location.search]);
+  return (
+    <>
+      <Navbar>
+        <Link to="/" className="logo-link">
+          <Navbar.Brand>
+            <img
+              src={"/favicon.svg"}
+              alt="logo"
+              width={24}
+              height={24}
+              style={{ marginRight: 10, verticalAlign: "middle" }}
+            />
+            akRecipes
+          </Navbar.Brand>
+        </Link>
+        <Navbar.Collapse className="justify-content-end">
+          <Nav.Link href={ADD_RECIPE_URL} target="_blank">
+            Add a recipe
+          </Nav.Link>
+        </Navbar.Collapse>
+      </Navbar>
+      <div className="app-container-div">{children}</div>
+    </>
+  );
 };
 
 export default Navigation;

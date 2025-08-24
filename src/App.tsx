@@ -1,5 +1,5 @@
-import './App.scss';
-import { Recipes } from './layouts/recipes';
+import "./App.scss";
+import { Recipes } from "./layouts/recipes";
 
 const App = () => {
   return <Recipes />;

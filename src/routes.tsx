@@ -1,5 +1,5 @@
 import App from "./App";
-import Error from './layouts/error'
+import Error from "./layouts/error";
 import { Recipe } from "./layouts/recipe";
 
 export default [

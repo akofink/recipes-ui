@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-    contents: read
+  contents: read
 
 jobs:
   build:
@@ -16,8 +16,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 'lts/*'
-          cache: 'yarn'
+          node-version: "lts/*"
+          cache: "yarn"
       - name: Cache generated recipes data
         uses: actions/cache@v4
         with:

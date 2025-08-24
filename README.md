@@ -5,11 +5,13 @@ Live site: https://recipes.akofink.com
 A React + TypeScript single-page app built with Webpack and deployed to GitHub Pages. Recipe content is sourced from the public repository https://github.com/akofink/recipes-md.
 
 ## Prerequisites
+
 - Node.js LTS (18.x recommended). This repo includes an `.nvmrc`; if you use `nvm`, run `nvm use`.
 - Yarn (v1) or npm. CI uses Yarn, examples below use Yarn, but npm works too.
 - Git
 
 ## Getting started (local development)
+
 1. Clone and enter the repo
    ```bash
    git clone https://github.com/akofink/recipes-ui.git
@@ -43,31 +45,38 @@ A React + TypeScript single-page app built with Webpack and deployed to GitHub P
    ```
 
 ## Scripts
+
 - `yarn start` – Run webpack-dev-server with hot reload
 - `yarn watch` – Rebuild on file changes (without dev server)
 - `yarn build` – Create a production build in `dist/` (runs static data generation first)
 - `yarn deploy` – Publish `dist/` to the `gh-pages` branch using `gh-pages`
 
 ## Building for production
+
 ```bash
 yarn build
 # or
 npm run build
 ```
+
 The optimized static assets will be emitted to `dist/`. Serve that folder with any static file server.
 
 ## Deployment
+
 This repo uses GitHub Actions to build and deploy on pushes to `main`.
+
 - Workflow: `.github/workflows/webpack-deploy.yml`
 - The action runs `yarn build` and then deploys `dist/` to GitHub Pages using `gh-pages`.
 
 You can also deploy locally (requires push access):
+
 ```bash
 yarn build
 yarn deploy
 ```
 
 ## Configuration and environment
+
 - Routing uses `react-router-dom` (v6). The dev server is configured with `historyApiFallback` so deep links work locally.
 - `webpack.config.ts` reads `HOST` and `PORT` from the environment if set.
 - Static data generation: At build time, a script fetches recipe metadata and markdown from the recipes-md repo and writes `src/generated/recipes.json`. The app then renders from that static data and no longer fetches content at runtime.
@@ -75,6 +84,7 @@ yarn deploy
   - Incremental: The generator checks latest upstream commit SHAs for `recipes/` and `images/` paths and skips regeneration when unchanged.
 
 ## Project structure
+
 ```
 src/
   components/        # Reusable UI building blocks
@@ -86,6 +96,7 @@ src/
 ```
 
 ## Linting and formatting
+
 - ESLint and Prettier are configured. Example commands:
   ```bash
   npx eslint src --ext .ts,.tsx
@@ -94,6 +105,7 @@ src/
   ```
 
 ## Common warnings
+
 - Browserslist: caniuse-lite is outdated – this is informational. Update the local DB:
   ```bash
   npx update-browserslist-db@latest
@@ -101,8 +113,10 @@ src/
 - Sass deprecations from Bootstrap – warnings about abs(), percentage units, or unitless values come from Bootstrap’s SCSS. They don’t break the build. They’ll be resolved in future Bootstrap releases. You can ignore them during development.
 
 ## Troubleshooting
+
 - Port already in use: set a different `PORT` when starting, e.g. `PORT=4001 yarn start`.
 - Blank page on refresh in production: ensure GitHub Pages is serving the `gh-pages` branch; client-side routing relies on `index.html` being returned for unknown paths.
 
 ---
+
 Questions or issues? Please open an issue or a pull request.

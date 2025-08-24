@@ -1,27 +1,27 @@
 @import "bootstrap";
 
 .clean-link {
-    &:hover {
-        color: inherit;
-        transform: scale(0.1rem);
-    }
-    text-decoration: none;
+  &:hover {
     color: inherit;
+    transform: scale(0.1rem);
+  }
+  text-decoration: none;
+  color: inherit;
 }
 
 .logo-link {
-    @extend .clean-link;
-    padding: 0 1rem 0 1rem;
+  @extend .clean-link;
+  padding: 0 1rem 0 1rem;
 }
 
 .app-container-div {
-    height: 100%;
-    border-width: 0;
-    border-style: double;
-    border-color: cornsilk;
-    border-top-width: 0.5rem;
-    padding: 1rem 10% 5rem 10%;
-    // background-color: lightgoldenrodyellow;
+  height: 100%;
+  border-width: 0;
+  border-style: double;
+  border-color: cornsilk;
+  border-top-width: 0.5rem;
+  padding: 1rem 10% 5rem 10%;
+  // background-color: lightgoldenrodyellow;
 }
 
 .spin {
@@ -29,7 +29,7 @@
 }
 
 .spinner-svg {
-    @extend .spin;
+  @extend .spin;
 }
 
 @keyframes rotation {
@@ -42,36 +42,37 @@
 }
 
 .recipe-card-img {
-    height: 150px;
-    object-fit: cover;
+  height: 150px;
+  object-fit: cover;
 }
 
 .recipe-card {
-    overflow: hidden;
-    margin: 0.5rem 0;
+  overflow: hidden;
+  margin: 0.5rem 0;
 }
 
 .recipe-card-body {
-    height: 50px;
+  height: 50px;
 }
 
 .recipe-card-title {
-    display: block;
-    width: 100%;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin: 0;
+  display: block;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
 }
 
 .col {
-    padding: 0 0.2rem;
+  padding: 0 0.2rem;
 }
 
 .justify-content-end {
-    justify-content: end;
+  justify-content: end;
 }
 
-html, body {
-    height: 100%;
+html,
+body {
+  height: 100%;
 }
