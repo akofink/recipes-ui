@@ -36,7 +36,10 @@ export const Navigation: FC = ({ children }) => {
     return (<>
         <Navbar>
             <Link to='/' className='logo-link'>
-                <Navbar.Brand>akRecipes</Navbar.Brand>
+                <Navbar.Brand>
+                    <img src={'/favicon.svg'} alt="logo" width={24} height={24} style={{ marginRight: 10, verticalAlign: 'middle' }} />
+                    akRecipes
+                </Navbar.Brand>
             </Link>
             <Navbar.Collapse className='justify-content-end'>
                 <Nav.Link href={ADD_RECIPE_URL} target='_blank'>
