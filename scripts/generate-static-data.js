@@ -20,7 +20,7 @@ const COMPARE_BASE = `${GH_API}/repos/${OWNER}/${REPO}/compare`;
 const OUT_DIR = path.resolve(__dirname, "..", "src", "generated");
 const OUT_FILE = path.join(OUT_DIR, "recipes.json");
 const META_FILE = path.join(OUT_DIR, "meta.json");
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 function authHeaders() {
   const token =
@@ -321,9 +321,13 @@ async function main() {
           } catch {}
         }
 
-        const out = Array.from(map.values()).sort((a, b) =>
-          a.name.localeCompare(b.name),
-        );
+        const out = Array.from(map.values())
+          .map((r) => ({
+            ...r,
+            // ensure we still have html if markdown is present
+            html: r.markdown ? require("marked").marked.parse(r.markdown) : "",
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
         await fs.promises.mkdir(OUT_DIR, { recursive: true });
         await fs.promises.writeFile(
           OUT_FILE,
@@ -388,6 +392,7 @@ async function main() {
 
   console.log("[generate-static-data] Fetching recipe list (full)...");
   const recipes = await listRecipes();
+  const { marked } = await import("marked");
   console.log(`[generate-static-data] Found ${recipes.length} recipes`);
 
   const out = [];
@@ -404,12 +409,14 @@ async function main() {
       // Continue without images; markdown will still be fetched
     }
     const markdown = await fetchMarkdown(filename);
+    const html = marked.parse(markdown);
     out.push({
       name,
       filename,
       imageName: images[0] || null,
       imageNames: images,
       markdown,
+      html,
     });
   }
 

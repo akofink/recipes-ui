@@ -10,4 +10,5 @@ export type RecipeData = {
   imageName: string | null;
   imageNames?: string[];
   markdown: string;
+  html?: string;
 };

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import ReactMarkdown from "react-markdown";
+// Markdown pre-rendered in build step; use 'html' for rendering
 import { useParams, useSearchParams } from "react-router-dom";
 import Navigation from "./navigation";
 import { Row, Col, Modal } from "react-bootstrap";
@@ -19,7 +19,7 @@ export const Recipe = () => {
     const list = recipesData as unknown as RecipeData[];
     return list.find((r) => r.filename === filename) || null;
   }, [filename]);
-  const markdown = recipe?.markdown || "";
+  const html = recipe?.html || "";
   const imageNames: string[] = (recipe?.imageNames || []) as string[];
   const [searchParams, setSearchParams] = useSearchParams();
   const activeImage = searchParams.get("img");
@@ -59,7 +59,7 @@ export const Recipe = () => {
           </Row>
         </div>
       )}
-      <ReactMarkdown>{markdown}</ReactMarkdown>
+      <div dangerouslySetInnerHTML={{ __html: html }} />
       <a href={`${EDIT_BASE_URL}/${filename}`} target="_blank" rel="noreferrer">
         Edit
       </a>
