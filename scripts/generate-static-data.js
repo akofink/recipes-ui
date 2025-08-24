@@ -20,6 +20,7 @@ const COMPARE_BASE = `${GH_API}/repos/${OWNER}/${REPO}/compare`;
 const OUT_DIR = path.resolve(__dirname, "..", "src", "generated");
 const OUT_FILE = path.join(OUT_DIR, "recipes.json");
 const META_FILE = path.join(OUT_DIR, "meta.json");
+const STATIC_DIR = path.resolve(__dirname, "..", "public", "static");
 const SCHEMA_VERSION = 3;
 
 function authHeaders() {
@@ -196,13 +197,114 @@ async function fetchMarkdown(filename) {
   return fetchText(url);
 }
 
+function renderStaticPage(name, images, html) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${name} – Recipes</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <style>
+    body { height: 100%; }
+    .clean-link { text-decoration: none; color: inherit; }
+    .logo-link { text-decoration: none; color: inherit; padding: 0 1rem; }
+    .app-container-div { height: 100%; border-style: double; border-color: cornsilk; border-top-width: .5rem; padding: 1rem 10% 5rem; }
+    .recipe-card-img { height: 150px; object-fit: cover; }
+    .recipe-card { overflow: hidden; margin: .5rem 0; }
+    .recipe-card-body { height: 50px; }
+    .recipe-card-title { display: block; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="app-container-div">
+    <nav class="mb-3 d-flex align-items-center">
+      <a href="/" class="logo-link"><strong>Recipes</strong></a>
+    </nav>
+    <main>
+      <h1>${name}</h1>
+      ${
+        images.length
+          ? `<div class="mb-3 row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
+        ${images
+          .map(
+            (img) =>
+              `<div class=\"col\"><img src=\"https://raw.githubusercontent.com/akofink/recipes-md/main/images/${name}/${img}\" alt=\"${name} ${img}\" style=\"width:100%;height:200px;object-fit:cover;border-radius:6px\" /></div>`,
+          )
+          .join("")}
+      </div>`
+          : ""
+      }
+      <article>${html}</article>
+      <p><a class="btn btn-outline-secondary" href="/">Back to recipes</a></p>
+    </main>
+  </div>
+</body>
+</html>`;
+}
+
+async function writeStatic(recipes) {
+  try {
+    await fs.promises.mkdir(STATIC_DIR, { recursive: true });
+  } catch {}
+  for (const r of recipes) {
+    const dir = path.join(STATIC_DIR, r.name);
+    try {
+      await fs.promises.mkdir(dir, { recursive: true });
+      const page = renderStaticPage(r.name, r.imageNames || [], r.html || "");
+      await fs.promises.writeFile(path.join(dir, "index.html"), page, "utf8");
+    } catch (e) {
+      console.warn(
+        `[generate-static-data] Failed to write static page for ${r.name}:`,
+        e?.message || e,
+      );
+    }
+  }
+  try {
+    const noscript = { recipes: recipes.map((r) => ({ name: r.name })) };
+    await fs.promises.writeFile(
+      path.resolve(__dirname, "..", "public", "noscript.json"),
+      JSON.stringify(noscript),
+      "utf8",
+    );
+  } catch (e) {
+    console.warn("[generate-static-data] Failed to write noscript.json", e);
+  }
+}
+
 async function main() {
   // Determine if generation is needed by comparing upstream SHAs with local meta
   console.log("[generate-static-data] Checking upstream SHAs...");
-  let [recipesSha, imagesSha] = await Promise.all([
-    latestCommitShaForPath("recipes"),
-    latestCommitShaForPath("images"),
-  ]);
+  let recipesSha = null;
+  let imagesSha = null;
+  try {
+    [recipesSha, imagesSha] = await Promise.all([
+      latestCommitShaForPath("recipes"),
+      latestCommitShaForPath("images"),
+    ]);
+  } catch (e) {
+    console.warn(
+      "[generate-static-data] Unable to query upstream SHAs; attempting offline/static generation from local data:",
+      e?.message || e,
+    );
+    const local = readLocalRecipes();
+    if (fileExists(OUT_FILE) && Array.isArray(local) && local.length) {
+      const ensure = (arr) =>
+        (arr || []).map((r) => ({
+          ...r,
+          html:
+            r.html ||
+            (r.markdown ? require("marked").marked.parse(r.markdown) : ""),
+        }));
+      await writeStatic(ensure(local));
+      console.log(
+        "[generate-static-data] Wrote static pages from local recipes.json and exiting.",
+      );
+      return;
+    }
+    // No local data available; rethrow
+    throw e;
+  }
   // Fallback: use branch head if path queries returned null
   if (!recipesSha || !imagesSha) {
     const head = await branchHeadSha();
@@ -222,6 +324,22 @@ async function main() {
     localMeta.source.imagesSha === imagesSha
   ) {
     console.log("[generate-static-data] Up to date. Skipping generation.");
+    // Ensure static pages and noscript are present/updated from local data
+    try {
+      const ensure = (arr) =>
+        (arr || []).map((r) => ({
+          ...r,
+          html:
+            r.html ||
+            (r.markdown ? require("marked").marked.parse(r.markdown) : ""),
+        }));
+      await writeStatic(ensure(localRecipes || []));
+    } catch (e) {
+      console.warn(
+        "[generate-static-data] Writing static pages from local data failed:",
+        e?.message || e,
+      );
+    }
     return;
   }
 
@@ -334,6 +452,7 @@ async function main() {
           JSON.stringify(out, null, 2),
           "utf8",
         );
+        await writeStatic(out);
         const meta = {
           schemaVersion: SCHEMA_VERSION,
           source: {
@@ -396,6 +515,7 @@ async function main() {
   console.log(`[generate-static-data] Found ${recipes.length} recipes`);
 
   const out = [];
+  await fs.promises.mkdir(STATIC_DIR, { recursive: true });
   for (const { name, filename } of recipes) {
     console.log(`[generate-static-data] Fetching ${filename}...`);
     let images = [];
@@ -418,6 +538,54 @@ async function main() {
       markdown,
       html,
     });
+
+    // Write static HTML page for this recipe
+    const page = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${name} – Recipes</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <style>
+    body { height: 100%; }
+    .clean-link { text-decoration: none; color: inherit; }
+    .logo-link { text-decoration: none; color: inherit; padding: 0 1rem; }
+    .app-container-div { height: 100%; border-style: double; border-color: cornsilk; border-top-width: .5rem; padding: 1rem 10% 5rem; }
+    .recipe-card-img { height: 150px; object-fit: cover; }
+    .recipe-card { overflow: hidden; margin: .5rem 0; }
+    .recipe-card-body { height: 50px; }
+    .recipe-card-title { display: block; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="app-container-div">
+    <nav class="mb-3 d-flex align-items-center">
+      <a href="/" class="logo-link"><strong>Recipes</strong></a>
+    </nav>
+    <main>
+      <h1>${name}</h1>
+      ${
+        images.length
+          ? `<div class="mb-3 row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
+        ${images
+          .map(
+            (img) =>
+              `<div class="col"><img src="https://raw.githubusercontent.com/akofink/recipes-md/main/images/${name}/${img}" alt="${name} ${img}" style="width:100%;height:200px;object-fit:cover;border-radius:6px" /></div>`,
+          )
+          .join("")}
+      </div>`
+          : ""
+      }
+      <article>${html}</article>
+      <p><a class="btn btn-outline-secondary" href="/">Back to recipes</a></p>
+    </main>
+  </div>
+</body>
+</html>`;
+    const dir = path.join(STATIC_DIR, name);
+    await fs.promises.mkdir(dir, { recursive: true });
+    await fs.promises.writeFile(path.join(dir, "index.html"), page, "utf8");
   }
 
   await fs.promises.mkdir(OUT_DIR, { recursive: true });
@@ -429,6 +597,21 @@ async function main() {
     count: out.length,
   };
   await fs.promises.writeFile(META_FILE, JSON.stringify(meta, null, 2), "utf8");
+
+  // Also write a noscript data blob (JSON) for index.html noscript fallback
+  try {
+    const noscript = {
+      recipes: out.map((r) => ({ name: r.name })),
+    };
+    await fs.promises.writeFile(
+      path.resolve(__dirname, "..", "public", "noscript.json"),
+      JSON.stringify(noscript),
+      "utf8",
+    );
+  } catch (e) {
+    console.warn("[generate-static-data] Failed to write noscript.json", e);
+  }
+
   console.log(`[generate-static-data] Wrote ${OUT_FILE} and ${META_FILE}`);
 }
 

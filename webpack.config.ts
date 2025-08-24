@@ -117,6 +117,8 @@ const config: Configuration = {
         "public/favicon.ico",
         "public/empty.svg",
         "public/spinner.svg",
+        { from: "public/static", to: "static" },
+        "public/noscript.json",
       ],
     }),
   ],
