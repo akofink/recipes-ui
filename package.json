@@ -79,7 +79,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "yarn typecheck && yarn lint && yarn format:check",
-    "prepare": "husky install"
+    "prepare": "husky"
   },
   "eslintConfig": {
     "extends": [
