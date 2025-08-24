@@ -15,6 +15,7 @@ const BRANCH = 'main';
 const RAW_BASE = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}`;
 const CONTENTS_BASE = `${GH_API}/repos/${OWNER}/${REPO}/contents`;
 const COMMITS_BASE = `${GH_API}/repos/${OWNER}/${REPO}/commits`;
+const COMPARE_BASE = `${GH_API}/repos/${OWNER}/${REPO}/compare`;
 
 const OUT_DIR = path.resolve(__dirname, '..', 'src', 'generated');
 const OUT_FILE = path.join(OUT_DIR, 'recipes.json');
@@ -85,6 +86,15 @@ async function latestCommitShaForPath(p) {
 }
 
 async function branchHeadSha() {
+  const url = `${COMMITS_BASE}/${encodeURIComponent(BRANCH)}`;
+  const item = await fetchJson(url);
+  return item?.sha || null;
+}
+
+async function compareCommits(base, head) {
+  const url = `${COMPARE_BASE}/${encodeURIComponent(base)}...${encodeURIComponent(head)}`;
+  return fetchJson(url);
+}
   const url = `${COMMITS_BASE}/${encodeURIComponent(BRANCH)}`;
   const item = await fetchJson(url);
   return item?.sha || null;
@@ -180,11 +190,103 @@ async function main() {
     return;
   }
 
-  if (outFileExists && localRecipes && localRecipes.length) {
-    console.log('[generate-static-data] Note: generated data present but meta missing/mismatched; regenerating to update schema/meta.');
+  if (outFileExists && localRecipes && localRecipes.length && localMeta && localMeta.schemaVersion === SCHEMA_VERSION) {
+    console.log('[generate-static-data] Attempting incremental update using compare API...');
+    try {
+      const [recipesCmp, imagesCmp] = await Promise.all([
+        localMeta.source?.recipesSha ? compareCommits(localMeta.source.recipesSha, recipesSha) : null,
+        localMeta.source?.imagesSha ? compareCommits(localMeta.source.imagesSha, imagesSha) : null,
+      ]);
+
+      const changedRecipeFiles = new Set(
+        (recipesCmp?.files || [])
+          .filter(f => f.filename && f.filename.startsWith('recipes/') && f.filename.endsWith('.md'))
+          .map(f => ({ filename: f.filename.replace(/^recipes\//, ''), status: f.status, previous: f.previous_filename?.replace(/^recipes\//, '') }))
+      );
+      const changedImageRecipeNames = new Set(
+        (imagesCmp?.files || [])
+          .filter(f => f.filename && f.filename.startsWith('images/'))
+          .map(f => f.filename.split('/')[1])
+          .filter(Boolean)
+      );
+
+      if ((changedRecipeFiles.size > 0) || (changedImageRecipeNames.size > 0)) {
+        console.log(`[generate-static-data] Changed recipes: ${changedRecipeFiles.size}, recipes with image changes: ${changedImageRecipeNames.size}`);
+        // Build a map from existing
+        const map = new Map();
+        for (const r of localRecipes) {
+          map.set(r.filename, r);
+        }
+
+        // Apply recipe file changes
+        for (const entry of changedRecipeFiles) {
+          const { filename, status, previous } = entry;
+          const name = filename.replace(/\.md$/, '');
+          if (status === 'removed') {
+            map.delete(filename);
+            continue;
+          }
+          if (status === 'renamed' && previous && previous !== filename) {
+            // Remove old and proceed to add new
+            map.delete(previous);
+          }
+          const markdown = await fetchMarkdown(filename);
+          let images = [];
+          try {
+            images = await listImagesFor(name);
+          } catch {}
+          map.set(filename, {
+            name,
+            filename,
+            imageName: images[0] || null,
+            imageNames: images,
+            markdown,
+          });
+        }
+
+        // Refresh images for impacted recipes (including ones changed above)
+        const toRefreshImages = new Set([...changedImageRecipeNames, ...[...changedRecipeFiles].map(e => e.filename.replace(/\.md$/, ''))]);
+        for (const rname of toRefreshImages) {
+          const filename = `${rname}.md`;
+          const existing = map.get(filename);
+          if (!existing) continue; // skip if recipe not present
+          try {
+            const images = await listImagesFor(rname);
+            existing.imageNames = images;
+            existing.imageName = images[0] || null;
+            map.set(filename, existing);
+          } catch {}
+        }
+
+        const out = Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+        await fs.promises.mkdir(OUT_DIR, { recursive: true });
+        await fs.promises.writeFile(OUT_FILE, JSON.stringify(out, null, 2), 'utf8');
+        const meta = {
+          schemaVersion: SCHEMA_VERSION,
+          source: { owner: OWNER, repo: REPO, branch: BRANCH, recipesSha, imagesSha },
+          generatedAt: new Date().toISOString(),
+          count: out.length,
+        };
+        await fs.promises.writeFile(META_FILE, JSON.stringify(meta, null, 2), 'utf8');
+        console.log(`[generate-static-data] Incremental update complete. Wrote ${OUT_FILE} and ${META_FILE}`);
+        return;
+      } else {
+        console.log('[generate-static-data] No relevant changes detected via compare. Skipping.');
+        await fs.promises.mkdir(OUT_DIR, { recursive: true });
+        await fs.promises.writeFile(META_FILE, JSON.stringify({
+          schemaVersion: SCHEMA_VERSION,
+          source: { owner: OWNER, repo: REPO, branch: BRANCH, recipesSha, imagesSha },
+          generatedAt: new Date().toISOString(),
+          count: localRecipes.length,
+        }, null, 2), 'utf8');
+        return;
+      }
+    } catch (e) {
+      console.warn('[generate-static-data] Incremental update failed; falling back to full generation:', e?.message || e);
+    }
   }
 
-  console.log('[generate-static-data] Fetching recipe list...');
+  console.log('[generate-static-data] Fetching recipe list (full)...');
   const recipes = await listRecipes();
   console.log(`[generate-static-data] Found ${recipes.length} recipes`);
 
