@@ -21,6 +21,7 @@ const OUT_DIR = path.resolve(__dirname, "..", "src", "generated");
 const OUT_FILE = path.join(OUT_DIR, "recipes.json");
 const META_FILE = path.join(OUT_DIR, "meta.json");
 const STATIC_DIR = path.resolve(__dirname, "..", "public", "static");
+const EDIT_BASE_URL = "https://github.com/akofink/recipes-md/edit/main/recipes";
 const SCHEMA_VERSION = 3;
 
 function authHeaders() {
@@ -197,7 +198,7 @@ async function fetchMarkdown(filename) {
   return fetchText(url);
 }
 
-function renderStaticPage(name, images, html) {
+function renderStaticPage(name, images, html, filename) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -244,6 +245,45 @@ function renderStaticPage(name, images, html) {
 }
 
 async function writeStatic(recipes) {
+  // Also write static index listing
+  try {
+    const links = (recipes || [])
+      .map((r) => `<li><a href="/static/${r.name}/">${r.name}</a></li>`)
+      .join("\n");
+    const index = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recipes – Static Index</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container-div">
+    <nav class="mb-3 d-flex align-items-center">
+      <a href="/" class="logo-link"><strong>Recipes</strong></a>
+    </nav>
+    <main>
+      <h1>Recipes</h1>
+      <ul>
+        ${links}
+      </ul>
+    </main>
+  </div>
+</body>
+</html>`;
+    await fs.promises.mkdir(STATIC_DIR, { recursive: true });
+    await fs.promises.writeFile(
+      path.join(STATIC_DIR, "index.html"),
+      index,
+      "utf8",
+    );
+  } catch (e) {
+    console.warn(
+      "[generate-static-data] Failed to write static index:",
+      e?.message || e,
+    );
+  }
   try {
     await fs.promises.mkdir(STATIC_DIR, { recursive: true });
   } catch {}
@@ -251,8 +291,17 @@ async function writeStatic(recipes) {
     const dir = path.join(STATIC_DIR, r.name);
     try {
       await fs.promises.mkdir(dir, { recursive: true });
-      const page = renderStaticPage(r.name, r.imageNames || [], r.html || "");
-      await fs.promises.writeFile(path.join(dir, "index.html"), page, "utf8");
+      const page = renderStaticPage(
+        r.name,
+        r.imageNames || [],
+        r.html || "",
+        r.filename,
+      );
+      const page2 = page.replace(
+        "Back to recipes</a></p>",
+        `Back to recipes</a> <a class="btn btn-outline-primary" href="${EDIT_BASE_URL}/${r.filename}" target="_blank" rel="noreferrer">Edit</a></p>`,
+      );
+      await fs.promises.writeFile(path.join(dir, "index.html"), page2, "utf8");
     } catch (e) {
       console.warn(
         `[generate-static-data] Failed to write static page for ${r.name}:`,
