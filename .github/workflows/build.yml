@@ -27,9 +27,11 @@ jobs:
             ${{ runner.os }}-build-${{ env.cache-name }}-
             ${{ runner.os }}-build-
             ${{ runner.os }}-
+      - name: Install
+        run: yarn --frozen-lockfile
+      - name: Validate (typecheck, lint, format)
+        run: yarn check
       - name: Build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          yarn
-          yarn build
+        run: yarn build
