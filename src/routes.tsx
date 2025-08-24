@@ -5,6 +5,7 @@ const App = lazy(() => import("./App"));
 const Recipe = lazy(() =>
   import("./layouts/recipe").then((m) => ({ default: m.Recipe })),
 );
+const NotFound = lazy(() => import("./layouts/not-found"));
 
 const suspense = (el: JSX.Element) => (
   <Suspense fallback={<div>Loading…</div>}>{el}</Suspense>
@@ -23,12 +24,17 @@ const recipeLoader = ({ params }: { params: { fileBasename?: string } }) => {
 
 export default [
   {
-    path: "/",
-    element: suspense(<App />),
-  },
-  {
-    path: "/:fileBasename",
-    element: suspense(<Recipe />),
-    loader: recipeLoader,
+    errorElement: suspense(<NotFound />),
+    children: [
+      {
+        index: true,
+        element: suspense(<App />),
+      },
+      {
+        path: "/:fileBasename",
+        element: suspense(<Recipe />),
+        loader: recipeLoader,
+      },
+    ],
   },
 ];
