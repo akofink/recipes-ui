@@ -256,6 +256,7 @@ async function writeStatic(recipes) {
     const Navigation = require("../src/layouts/navigation").default;
     const Recipes = require("../src/layouts/recipes").Recipes;
     const RecipeView = require("../src/layouts/recipe").Recipe;
+    const { Routes, Route } = require("react-router-dom");
 
     // 1) Index page
     const indexTree = React.createElement(
@@ -268,6 +269,8 @@ async function writeStatic(recipes) {
       /href="\/(?!static\/)([^"\/][^"#?]*)"/g,
       'href="/static/$1/"',
     );
+    // Ensure brand/root link points to static index for no-JS
+    indexBody = indexBody.replace(/href="\/"/g, 'href="/static/"');
     const indexShell = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -314,6 +317,8 @@ ${indexBody}
         /href="\/(?!static\/)([^"\/][^"#?]*)"/g,
         'href="/static/$1/"',
       );
+      // Ensure brand/root link points to static index
+      body = body.replace(/href="\/"/g, 'href="/static/"');
       const shell = `<!DOCTYPE html>
 <html lang="en">
 <head>
