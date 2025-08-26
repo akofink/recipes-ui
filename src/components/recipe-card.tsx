@@ -12,9 +12,7 @@ export const RecipeCard: FC<GithubFile> = ({ name }) => {
   const imageName = recipe?.imageName ?? null;
   const imageSrc = useMemo(
     () =>
-      imageName
-        ? `${RECIPESMD_RAW}/images/${name}/${imageName}`
-        : "./empty.svg",
+      imageName ? `${RECIPESMD_RAW}/images/${name}/${imageName}` : "/empty.svg",
     [imageName, name],
   );
 
