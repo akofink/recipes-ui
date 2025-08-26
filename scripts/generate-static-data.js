@@ -247,7 +247,7 @@ function renderStaticPage(name, images, html, filename) {
 }
 
 async function writeStatic(recipes) {
-  // Try to SSR the React index (Recipes inside Navigation) to static HTML
+  // Try to SSR the React index and per-recipe pages to static HTML
   try {
     require("ts-node").register({ transpileOnly: true });
     const React = require("react");
@@ -255,20 +255,20 @@ async function writeStatic(recipes) {
     const { StaticRouter } = require("react-router-dom/server");
     const Navigation = require("../src/layouts/navigation").default;
     const Recipes = require("../src/layouts/recipes").Recipes;
+    const RecipeView = require("../src/layouts/recipe").Recipe;
 
-    const tree = React.createElement(
+    // 1) Index page
+    const indexTree = React.createElement(
       StaticRouter,
       { location: "/" },
       React.createElement(Navigation, null, React.createElement(Recipes, null)),
     );
-    let bodyHtml = renderToStaticMarkup(tree);
-    // Rewrite SPA links to static pages for no-JS experience
-    bodyHtml = bodyHtml.replace(
+    let indexBody = renderToStaticMarkup(indexTree);
+    indexBody = indexBody.replace(
       /href="\/(?!static\/)([^"\/][^"#?]*)"/g,
       'href="/static/$1/"',
     );
-
-    const shell = `<!DOCTYPE html>
+    const indexShell = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -287,21 +287,66 @@ async function writeStatic(recipes) {
   </style>
 </head>
 <body>
-${bodyHtml}
+${indexBody}
 </body>
 </html>`;
     await fs.promises.mkdir(STATIC_DIR, { recursive: true });
     await fs.promises.writeFile(
       path.join(STATIC_DIR, "index.html"),
-      shell,
+      indexShell,
       "utf8",
     );
+
+    // 2) Per-recipe pages
+    for (const r of recipes) {
+      const location = `/${r.name}`;
+      const recipeTree = React.createElement(
+        StaticRouter,
+        { location },
+        React.createElement(
+          Navigation,
+          null,
+          React.createElement(RecipeView, null),
+        ),
+      );
+      let body = renderToStaticMarkup(recipeTree);
+      body = body.replace(
+        /href="\/(?!static\/)([^"\/][^"#?]*)"/g,
+        'href="/static/$1/"',
+      );
+      const shell = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${r.name} – Recipes</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { height: 100%; }
+    .clean-link { text-decoration: none; color: inherit; }
+    .logo-link { text-decoration: none; color: inherit; padding: 0 1rem; }
+    .app-container-div { height: 100%; border-style: double; border-color: cornsilk; border-top-width: .5rem; padding: 1rem 10% 5rem; }
+    .recipe-card-img { height: 150px; object-fit: cover; }
+    .recipe-card { overflow: hidden; margin: .5rem 0; }
+    .recipe-card-body { height: 50px; }
+    .recipe-card-title { display: block; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
+  </style>
+</head>
+<body>
+${body}
+</body>
+</html>`;
+      const dir = path.join(STATIC_DIR, r.name);
+      await fs.promises.mkdir(dir, { recursive: true });
+      await fs.promises.writeFile(path.join(dir, "index.html"), shell, "utf8");
+    }
   } catch (e) {
     console.warn(
-      "[generate-static-data] SSR of static index failed; falling back to simple list:",
+      "[generate-static-data] SSR failed; falling back to simple static pages:",
       e?.message || e,
     );
-    // Also write static index listing
+
+    // fallback index listing
     try {
       const links = (recipes || [])
         .map((r) => `<li><a href="/static/${r.name}/">${r.name}</a></li>`)
@@ -336,75 +381,33 @@ ${bodyHtml}
       );
     } catch (e2) {
       console.warn(
-        "[generate-static-data] Failed to write static index:",
+        "[generate-static-data] Failed to write fallback static index:",
         e2?.message || e2,
       );
     }
-  }
-  // Also write static index listing
-  try {
-    const links = (recipes || [])
-      .map((r) => `<li><a href="/static/${r.name}/">${r.name}</a></li>`)
-      .join("\n");
-    const index = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Recipes – Static Index</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body>
-  <div class="app-container-div">
-    <nav class="mb-3 d-flex align-items-center">
-      <a href="/" class="logo-link"><strong>Recipes</strong></a>
-    </nav>
-    <main>
-      <h1>Recipes</h1>
-      <ul>
-        ${links}
-      </ul>
-    </main>
-  </div>
-</body>
-</html>`;
-    await fs.promises.mkdir(STATIC_DIR, { recursive: true });
-    await fs.promises.writeFile(
-      path.join(STATIC_DIR, "index.html"),
-      index,
-      "utf8",
-    );
-  } catch (e) {
-    console.warn(
-      "[generate-static-data] Failed to write static index:",
-      e?.message || e,
-    );
-  }
-  try {
-    await fs.promises.mkdir(STATIC_DIR, { recursive: true });
-  } catch {}
-  for (const r of recipes) {
-    const dir = path.join(STATIC_DIR, r.name);
-    try {
-      await fs.promises.mkdir(dir, { recursive: true });
-      const page = renderStaticPage(
-        r.name,
-        r.imageNames || [],
-        r.html || "",
-        r.filename,
-      );
-      const page2 = page.replace(
-        "Back to recipes</a></p>",
-        `Back to recipes</a> <a class="btn btn-outline-primary" href="${EDIT_BASE_URL}/${r.filename}" target="_blank" rel="noreferrer">Edit</a></p>`,
-      );
-      await fs.promises.writeFile(path.join(dir, "index.html"), page2, "utf8");
-    } catch (e) {
-      console.warn(
-        `[generate-static-data] Failed to write static page for ${r.name}:`,
-        e?.message || e,
-      );
+
+    // fallback per-recipe minimal pages
+    for (const r of recipes) {
+      const dir = path.join(STATIC_DIR, r.name);
+      try {
+        await fs.promises.mkdir(dir, { recursive: true });
+        const page = renderStaticPage(
+          r.name,
+          r.imageNames || [],
+          r.html || "",
+          r.filename,
+        );
+        await fs.promises.writeFile(path.join(dir, "index.html"), page, "utf8");
+      } catch (e3) {
+        console.warn(
+          `[generate-static-data] Failed to write fallback static page for ${r.name}:`,
+          e3?.message || e3,
+        );
+      }
     }
   }
+
+  // noscript data to power the link and future offline use
   try {
     const noscript = { recipes: recipes.map((r) => ({ name: r.name })) };
     await fs.promises.writeFile(
