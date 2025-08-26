@@ -1,5 +1,4 @@
 import fs from "fs";
-import { marked } from "marked";
 import { OWNER, REPO, BRANCH, SCHEMA_VERSION } from "./config";
 import {
   OUT_FILE,
@@ -22,13 +21,28 @@ import {
 import { writeStatic } from "./ssr";
 import type { GenerationMeta, GhCompare, GhCompareFile, Recipe } from "./types";
 
-export function ensureHtml(recipes: Recipe[] | null | undefined): Recipe[] {
-  return (recipes || []).map((r) => ({
-    ...r,
-    html:
-      r.html ||
-      (r.markdown ? (marked.parse(r.markdown) as unknown as string) : ""),
-  }));
+async function renderHtml(md: string): Promise<string> {
+  const mod = (await import("marked")) as unknown as {
+    marked?: { parse: (s: string) => string | Promise<string> };
+    parse?: (s: string) => string | Promise<string>;
+  };
+  const parser = mod.marked?.parse ?? mod.parse;
+  return (parser ? await parser(md) : md) as string;
+}
+
+export async function ensureHtml(
+  recipes: Recipe[] | null | undefined,
+): Promise<Recipe[]> {
+  const list = recipes || [];
+  const out: Recipe[] = [];
+  for (const r of list) {
+    let html = r.html || "";
+    if (!html && r.markdown) {
+      html = await renderHtml(r.markdown);
+    }
+    out.push({ ...r, html });
+  }
+  return out;
 }
 
 export async function getUpstreamShas(): Promise<{
@@ -56,7 +70,7 @@ export async function getUpstreamShas(): Promise<{
     );
     const local = readLocalRecipes();
     if (fileExists(OUT_FILE) && Array.isArray(local) && local.length) {
-      await writeStatic(ensureHtml(local));
+      await writeStatic(await ensureHtml(local));
       console.log(
         "[generate-static-data] Wrote static pages from local recipes.json and exiting.",
       );
@@ -198,12 +212,14 @@ export async function incrementalUpdate(
     }
   }
 
-  const out: Recipe[] = Array.from(map.values())
-    .map((r) => ({
+  const out: Recipe[] = [];
+  for (const r of Array.from(map.values())) {
+    out.push({
       ...r,
-      html: r.markdown ? (marked.parse(r.markdown) as unknown as string) : "",
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+      html: r.markdown ? await renderHtml(r.markdown) : "",
+    });
+  }
+  out.sort((a, b) => a.name.localeCompare(b.name));
 
   return out;
 }
@@ -233,7 +249,7 @@ export async function fullGeneration(): Promise<Recipe[]> {
       );
     }
     const markdown = await fetchMarkdown(filename);
-    const html = marked.parse(markdown) as unknown as string;
+    const html = await renderHtml(markdown);
     out.push({
       name,
       filename,
@@ -257,7 +273,7 @@ export async function run(): Promise<void> {
   if (outFileExists && isUpToDate(localMeta, recipesSha, imagesSha)) {
     console.log("[generate-static-data] Up to date. Skipping generation.");
     try {
-      await writeStatic(ensureHtml(localRecipes || []));
+      await writeStatic(await ensureHtml(localRecipes || []));
     } catch (e: unknown) {
       console.warn(
         "[generate-static-data] Writing static pages from local data failed:",
