@@ -1,321 +1,54 @@
 #!/usr/bin/env node
 /*
   Generate static recipe data at build time by fetching from the recipes-md repo.
-  - Produces src/generated/recipes.json with entries: { name, filename, imageName, markdown }
+  - Produces src/generated/recipes.json with entries: { name, filename, imageName, imageNames, markdown, html }
   - Writes src/generated/meta.json with source commit SHAs used to generate the data
   - Skips generation if current local meta matches latest upstream SHAs (recipes/ and images/ paths)
+  - Renders static HTML pages under src/generated/static via SSR using app layouts
 */
-const fs = require("fs");
-const path = require("path");
 
-const GH_API = "https://api.github.com";
-const OWNER = "akofink";
-const REPO = "recipes-md";
-const BRANCH = "main";
-const RAW_BASE = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}`;
-const CONTENTS_BASE = `${GH_API}/repos/${OWNER}/${REPO}/contents`;
-const COMMITS_BASE = `${GH_API}/repos/${OWNER}/${REPO}/commits`;
-const COMPARE_BASE = `${GH_API}/repos/${OWNER}/${REPO}/compare`;
-
-const OUT_DIR = path.resolve(__dirname, "..", "src", "generated");
-const OUT_FILE = path.join(OUT_DIR, "recipes.json");
-const META_FILE = path.join(OUT_DIR, "meta.json");
-const STATIC_DIR = path.join(OUT_DIR, "static");
-const SCHEMA_VERSION = 3;
-
-function authHeaders() {
-  const token =
-    process.env.GITHUB_TOKEN ||
-    process.env.GH_TOKEN ||
-    process.env.RECIPES_GITHUB_TOKEN;
-  return token ? { Authorization: `token ${token}` } : {};
-}
-
-const MAX_WAIT_MS = Number.parseInt(
-  process.env.GENERATE_MAX_WAIT_MS || "120000",
-  10,
-);
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function robustFetch(url, init = {}, attempt = 1) {
-  const res = await fetch(url, {
-    headers: {
-      ...authHeaders(),
-      "User-Agent": "recipes-ui-build-script",
-      ...(init.headers || {}),
-    },
-    ...init,
+// Enable loading of .ts/.tsx helper modules from this JS entrypoint
+try {
+  require("ts-node").register({
+    transpileOnly: true,
+    compilerOptions: { module: "CommonJS" },
   });
-  if (res.status === 403 || res.status === 429) {
-    const retryAfter = Number.parseInt(
-      res.headers.get("retry-after") || "0",
-      10,
-    );
-    const remaining = res.headers.get("x-ratelimit-remaining");
-    const reset = Number.parseInt(
-      res.headers.get("x-ratelimit-reset") || "0",
-      10,
-    ); // epoch seconds
-    const now = Date.now();
-    const resetMs = reset ? Math.max(0, reset * 1000 - now) : 0;
-    const waitMs = Math.max(retryAfter ? retryAfter * 1000 : 0, resetMs, 1000);
-    if (
-      (retryAfter || remaining === "0" || reset) &&
-      Number.isFinite(MAX_WAIT_MS) &&
-      waitMs > MAX_WAIT_MS
-    ) {
-      const msg = `Rate limited. Need to wait ~${Math.ceil(waitMs / 1000)}s; exceeds cap ${Math.ceil(MAX_WAIT_MS / 1000)}s. Set GITHUB_TOKEN or increase GENERATE_MAX_WAIT_MS.`;
-      throw new Error(msg);
-    }
-    if (retryAfter || remaining === "0" || reset) {
-      if (process.env.CI) {
-        const msg = `Rate limited in CI (HTTP ${res.status}). Set GITHUB_TOKEN or increase GENERATE_MAX_WAIT_MS.`;
-        throw new Error(msg);
-      }
-      console.warn(
-        `[generate-static-data] Rate limited (HTTP ${res.status}). Waiting ~${Math.ceil(waitMs / 1000)}s before retry...`,
-      );
-      await sleep(waitMs);
-      return robustFetch(url, init, attempt + 1);
-    }
-  }
-  if (!res.ok && res.status >= 500 && attempt < 3) {
-    const backoff = attempt * 1000;
-    console.warn(
-      `[generate-static-data] Server error ${res.status}. Retrying in ${backoff}ms...`,
-    );
-    await sleep(backoff);
-    return robustFetch(url, init, attempt + 1);
-  }
-  return res;
+} catch {}
+
+const fs = require("fs");
+
+// TS modules
+const { OWNER, REPO, BRANCH, SCHEMA_VERSION } = require("./lib/config.ts");
+const {
+  OUT_DIR,
+  OUT_FILE,
+  META_FILE,
+  STATIC_DIR,
+  fileExists,
+  readLocalMeta,
+  readLocalRecipes,
+  writeRecipes,
+  writeMeta,
+} = require("./lib/io.ts");
+const {
+  latestCommitShaForPath,
+  branchHeadSha,
+  compareCommits,
+  listRecipes,
+  listImagesFor,
+  fetchMarkdown,
+} = require("./lib/github.ts");
+const { writeStatic } = require("./lib/ssr.ts");
+
+function ensureHtml(recipes) {
+  const { marked } = require("marked");
+  return (recipes || []).map((r) => ({
+    ...r,
+    html: r.html || (r.markdown ? marked.parse(r.markdown) : ""),
+  }));
 }
 
-async function fetchJson(url) {
-  const res = await robustFetch(url);
-  if (res.status === 404) return null;
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      `Failed to fetch ${url}: ${res.status} ${res.statusText} - ${text}`,
-    );
-  }
-  return res.json();
-}
-
-async function fetchText(url) {
-  const res = await robustFetch(url);
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      `Failed to fetch ${url}: ${res.status} ${res.statusText} - ${text}`,
-    );
-  }
-  return res.text();
-}
-
-async function latestCommitShaForPath(p) {
-  const url = `${COMMITS_BASE}?sha=${encodeURIComponent(BRANCH)}&path=${encodeURIComponent(p)}&per_page=1`;
-  const items = await fetchJson(url);
-  if (!Array.isArray(items) || items.length === 0) return null;
-  return items[0]?.sha || null;
-}
-
-async function branchHeadSha() {
-  const url = `${COMMITS_BASE}/${encodeURIComponent(BRANCH)}`;
-  const item = await fetchJson(url);
-  return item?.sha || null;
-}
-
-async function compareCommits(base, head) {
-  const url = `${COMPARE_BASE}/${encodeURIComponent(base)}...${encodeURIComponent(head)}`;
-  return fetchJson(url);
-}
-
-function readLocalMeta() {
-  try {
-    const raw = fs.readFileSync(META_FILE, "utf8");
-    return JSON.parse(raw);
-  } catch (_) {
-    return null;
-  }
-}
-
-function readLocalRecipes() {
-  try {
-    const raw = fs.readFileSync(OUT_FILE, "utf8");
-    return JSON.parse(raw);
-  } catch (_) {
-    return null;
-  }
-}
-
-function fileExists(p) {
-  try {
-    fs.accessSync(p, fs.constants.F_OK);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function listRecipes() {
-  const url = `${CONTENTS_BASE}/recipes`;
-  const items = await fetchJson(url);
-  if (!Array.isArray(items)) return [];
-  return items
-    .filter(
-      (it) => it && typeof it.name === "string" && it.name.endsWith(".md"),
-    )
-    .map((it) => ({ filename: it.name, name: it.name.replace(/\.md$/, "") }));
-}
-
-async function listImagesFor(name) {
-  const url = `${CONTENTS_BASE}/images/${encodeURIComponent(name)}`;
-  console.log(`[generate-static-data] Listing images for ${name} ...`);
-  const items = await fetchJson(url);
-  // 404 means no images dir for this recipe
-  if (items === null) {
-    console.log(`[generate-static-data] No images directory for ${name}`);
-    return [];
-  }
-  if (!Array.isArray(items)) {
-    throw new Error(
-      `Unexpected response listing images for ${name}: ${JSON.stringify(items)}`,
-    );
-  }
-  const names = items
-    .filter((it) => it && typeof it.name === "string")
-    .map((it) => it.name)
-    .sort();
-  console.log(
-    `[generate-static-data] Found ${names.length} image(s) for ${name}`,
-  );
-  return names;
-}
-
-async function fetchMarkdown(filename) {
-  const url = `${RAW_BASE}/recipes/${encodeURIComponent(filename)}`;
-  return fetchText(url);
-}
-
-async function writeStatic(recipes) {
-  // Try to SSR the React index and per-recipe pages to static HTML
-  // Note: Recipes/Recipe components include Navigation; we do not add it here to avoid duplication
-  try {
-    require("ts-node").register({ transpileOnly: true });
-    const React = require("react");
-    const { renderToStaticMarkup } = require("react-dom/server");
-    const { StaticRouter } = require("react-router-dom/server");
-    const Recipes = require("../src/layouts/recipes").Recipes;
-    const RecipeView = require("../src/layouts/recipe").Recipe;
-    const { Routes, Route } = require("react-router-dom");
-
-    // 1) Index page (render through Routes so hooks relying on matches work)
-    const indexTree = React.createElement(
-      StaticRouter,
-      { location: "/" },
-      React.createElement(
-        Routes,
-        null,
-        React.createElement(Route, {
-          path: "/",
-          element: React.createElement(Recipes, null),
-        }),
-      ),
-    );
-    let indexBody = renderToStaticMarkup(indexTree);
-    indexBody = indexBody.replace(
-      /href="\/(?!static\/)([^"\/][^"#?]*)"/g,
-      'href="/static/$1/"',
-    );
-    const indexShell = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Recipes</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body { height: 100%; }
-    .clean-link { text-decoration: none; color: inherit; }
-    .logo-link { text-decoration: none; color: inherit; padding: 0 1rem; }
-    .app-container-div { height: 100%; border-style: double; border-color: cornsilk; border-top-width: .5rem; padding: 1rem 10% 5rem; }
-    .recipe-card-img { height: 150px; object-fit: cover; }
-    .recipe-card { overflow: hidden; margin: .5rem 0; }
-    .recipe-card-body { height: 50px; }
-    .recipe-card-title { display: block; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
-  </style>
-</head>
-<body>
-${indexBody}
-</body>
-</html>`;
-    await fs.promises.mkdir(STATIC_DIR, { recursive: true });
-    await fs.promises.writeFile(
-      path.join(STATIC_DIR, "index.html"),
-      indexShell,
-      "utf8",
-    );
-
-    // 2) Per-recipe pages
-    for (const r of recipes) {
-      const location = `/${r.name}`;
-      const recipeTree = React.createElement(
-        StaticRouter,
-        { location },
-        React.createElement(
-          Routes,
-          null,
-          React.createElement(Route, {
-            path: "/:fileBasename",
-            element: React.createElement(RecipeView, null),
-          }),
-        ),
-      );
-      let body = renderToStaticMarkup(recipeTree);
-      body = body.replace(
-        /href="\/(?!static\/)([^"\/][^"#?]*)"/g,
-        'href="/static/$1/"',
-      );
-
-      const shell = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${r.name} – Recipes</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body { height: 100%; }
-    .clean-link { text-decoration: none; color: inherit; }
-    .logo-link { text-decoration: none; color: inherit; padding: 0 1rem; }
-    .app-container-div { height: 100%; border-style: double; border-color: cornsilk; border-top-width: .5rem; padding: 1rem 10% 5rem; }
-    .recipe-card-img { height: 150px; object-fit: cover; }
-    .recipe-card { overflow: hidden; margin: .5rem 0; }
-    .recipe-card-body { height: 50px; }
-    .recipe-card-title { display: block; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
-  </style>
-</head>
-<body>
-${body}
-</body>
-</html>`;
-      const dir = path.join(STATIC_DIR, r.name);
-      await fs.promises.mkdir(dir, { recursive: true });
-      await fs.promises.writeFile(path.join(dir, "index.html"), shell, "utf8");
-    }
-  } catch (e) {
-    // Fail fast — do not silently ship partial SSR output
-    throw new Error(`[generate-static-data] SSR failed: ${e?.message || e}`);
-  }
-}
-
-async function main() {
-  // Determine if generation is needed by comparing upstream SHAs with local meta
-  console.log("[generate-static-data] Checking upstream SHAs...");
+async function getUpstreamShas() {
   let recipesSha = null;
   let imagesSha = null;
   try {
@@ -325,62 +58,197 @@ async function main() {
     ]);
   } catch (e) {
     if (process.env.CI) {
-      // In CI, fail fast instead of falling back to possibly stale local data
       throw new Error(
         `[generate-static-data] Unable to query upstream SHAs in CI: ${e?.message || e}`,
       );
     }
+    // Fallback to local-only SSR if possible
     console.warn(
       "[generate-static-data] Unable to query upstream SHAs; attempting offline/static generation from local data:",
       e?.message || e,
     );
     const local = readLocalRecipes();
     if (fileExists(OUT_FILE) && Array.isArray(local) && local.length) {
-      const ensure = (arr) =>
-        (arr || []).map((r) => ({
-          ...r,
-          html:
-            r.html ||
-            (r.markdown ? require("marked").marked.parse(r.markdown) : ""),
-        }));
-      await writeStatic(ensure(local));
+      await writeStatic(ensureHtml(local));
       console.log(
         "[generate-static-data] Wrote static pages from local recipes.json and exiting.",
       );
-      return;
+      return { recipesSha: null, imagesSha: null, offlineDone: true };
     }
-    // No local data available; rethrow
     throw e;
   }
-  // Fallback: use branch head if path queries returned null
   if (!recipesSha || !imagesSha) {
     const head = await branchHeadSha();
     recipesSha = recipesSha || head;
     imagesSha = imagesSha || head;
   }
-  const localMeta = readLocalMeta();
-  const outFileExists = fileExists(OUT_FILE);
-  const localRecipes = readLocalRecipes();
-  if (
-    outFileExists &&
-    localMeta &&
-    localMeta.source &&
+  return { recipesSha, imagesSha, offlineDone: false };
+}
+
+function isUpToDate(localMeta, recipesSha, imagesSha) {
+  return (
+    !!localMeta &&
+    !!localMeta.source &&
     localMeta.schemaVersion === SCHEMA_VERSION &&
     localMeta.source.branch === BRANCH &&
     localMeta.source.recipesSha === recipesSha &&
     localMeta.source.imagesSha === imagesSha
-  ) {
-    console.log("[generate-static-data] Up to date. Skipping generation.");
-    // Ensure static pages and noscript are present/updated from local data
+  );
+}
+
+async function writeMetaNow(recipesSha, imagesSha, count) {
+  const meta = {
+    schemaVersion: SCHEMA_VERSION,
+    source: { owner: OWNER, repo: REPO, branch: BRANCH, recipesSha, imagesSha },
+    generatedAt: new Date().toISOString(),
+    count,
+  };
+  await writeMeta(meta);
+}
+
+async function incrementalUpdate(
+  localRecipes,
+  localMeta,
+  recipesSha,
+  imagesSha,
+) {
+  const [recipesCmp, imagesCmp] = await Promise.all([
+    localMeta.source?.recipesSha
+      ? compareCommits(localMeta.source.recipesSha, recipesSha)
+      : null,
+    localMeta.source?.imagesSha
+      ? compareCommits(localMeta.source.imagesSha, imagesSha)
+      : null,
+  ]);
+
+  const changedRecipeFiles = new Set(
+    (recipesCmp?.files || [])
+      .filter(
+        (f) =>
+          f.filename &&
+          f.filename.startsWith("recipes/") &&
+          f.filename.endsWith(".md"),
+      )
+      .map((f) => ({
+        filename: f.filename.replace(/^recipes\//, ""),
+        status: f.status,
+        previous: f.previous_filename?.replace(/^recipes\//, ""),
+      })),
+  );
+  const changedImageRecipeNames = new Set(
+    (imagesCmp?.files || [])
+      .filter((f) => f.filename && f.filename.startsWith("images/"))
+      .map((f) => f.filename.split("/")[1])
+      .filter(Boolean),
+  );
+
+  if (changedRecipeFiles.size === 0 && changedImageRecipeNames.size === 0) {
+    return null; // nothing to do
+  }
+
+  // Build map of existing entries
+  const map = new Map(localRecipes.map((r) => [r.filename, { ...r }]));
+
+  // Apply recipe file changes
+  for (const entry of changedRecipeFiles) {
+    const { filename, status, previous } = entry;
+    const name = filename.replace(/\.md$/, "");
+    if (status === "removed") {
+      map.delete(filename);
+      continue;
+    }
+    if (status === "renamed" && previous && previous !== filename) {
+      map.delete(previous);
+    }
+    const markdown = await fetchMarkdown(filename);
+    let images = [];
     try {
-      const ensure = (arr) =>
-        (arr || []).map((r) => ({
-          ...r,
-          html:
-            r.html ||
-            (r.markdown ? require("marked").marked.parse(r.markdown) : ""),
-        }));
-      await writeStatic(ensure(localRecipes || []));
+      images = await listImagesFor(name);
+    } catch {}
+    map.set(filename, {
+      name,
+      filename,
+      imageName: images[0] || null,
+      imageNames: images,
+      markdown,
+    });
+  }
+
+  // Refresh images for impacted recipes (including ones changed above)
+  const toRefreshImages = new Set([
+    ...changedImageRecipeNames,
+    ...[...changedRecipeFiles].map((e) => e.filename.replace(/\.md$/, "")),
+  ]);
+  for (const rname of toRefreshImages) {
+    const filename = `${rname}.md`;
+    const existing = map.get(filename);
+    if (!existing) continue;
+    try {
+      const images = await listImagesFor(rname);
+      existing.imageNames = images;
+      existing.imageName = images[0] || null;
+      map.set(filename, existing);
+    } catch {}
+  }
+
+  const { marked } = require("marked");
+  const out = Array.from(map.values())
+    .map((r) => ({ ...r, html: r.markdown ? marked.parse(r.markdown) : "" }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return out;
+}
+
+async function fullGeneration() {
+  console.log("[generate-static-data] Fetching recipe list (full)...");
+  const recipes = await listRecipes();
+  console.log(`[generate-static-data] Found ${recipes.length} recipes`);
+
+  const { marked } = require("marked");
+  const out = [];
+  await fs.promises.mkdir(STATIC_DIR, { recursive: true });
+  for (const { name, filename } of recipes) {
+    console.log(`[generate-static-data] Fetching ${filename}...`);
+    let images = [];
+    try {
+      images = await listImagesFor(name);
+    } catch (e) {
+      if (process.env.CI) {
+        throw new Error(
+          `[generate-static-data] Failed to list images for ${name} in CI: ${e?.message || e}`,
+        );
+      }
+      console.warn(
+        `[generate-static-data] Warning: failed to list images for ${name}:`,
+        e?.message || e,
+      );
+    }
+    const markdown = await fetchMarkdown(filename);
+    const html = marked.parse(markdown);
+    out.push({
+      name,
+      filename,
+      imageName: images[0] || null,
+      imageNames: images,
+      markdown,
+      html,
+    });
+  }
+  return out;
+}
+
+async function main() {
+  const { recipesSha, imagesSha, offlineDone } = await getUpstreamShas();
+  if (offlineDone) return;
+
+  const localMeta = readLocalMeta();
+  const outFileExists = fileExists(OUT_FILE);
+  const localRecipes = readLocalRecipes();
+
+  if (outFileExists && isUpToDate(localMeta, recipesSha, imagesSha)) {
+    console.log("[generate-static-data] Up to date. Skipping generation.");
+    try {
+      await writeStatic(ensureHtml(localRecipes || []));
     } catch (e) {
       console.warn(
         "[generate-static-data] Writing static pages from local data failed:",
@@ -401,122 +269,16 @@ async function main() {
       "[generate-static-data] Attempting incremental update using compare API...",
     );
     try {
-      const [recipesCmp, imagesCmp] = await Promise.all([
-        localMeta.source?.recipesSha
-          ? compareCommits(localMeta.source.recipesSha, recipesSha)
-          : null,
-        localMeta.source?.imagesSha
-          ? compareCommits(localMeta.source.imagesSha, imagesSha)
-          : null,
-      ]);
-
-      const changedRecipeFiles = new Set(
-        (recipesCmp?.files || [])
-          .filter(
-            (f) =>
-              f.filename &&
-              f.filename.startsWith("recipes/") &&
-              f.filename.endsWith(".md"),
-          )
-          .map((f) => ({
-            filename: f.filename.replace(/^recipes\//, ""),
-            status: f.status,
-            previous: f.previous_filename?.replace(/^recipes\//, ""),
-          })),
+      const updated = await incrementalUpdate(
+        localRecipes,
+        localMeta,
+        recipesSha,
+        imagesSha,
       );
-      const changedImageRecipeNames = new Set(
-        (imagesCmp?.files || [])
-          .filter((f) => f.filename && f.filename.startsWith("images/"))
-          .map((f) => f.filename.split("/")[1])
-          .filter(Boolean),
-      );
-
-      if (changedRecipeFiles.size > 0 || changedImageRecipeNames.size > 0) {
-        console.log(
-          `[generate-static-data] Changed recipes: ${changedRecipeFiles.size}, recipes with image changes: ${changedImageRecipeNames.size}`,
-        );
-        // Build a map from existing
-        const map = new Map();
-        for (const r of localRecipes) {
-          map.set(r.filename, r);
-        }
-
-        // Apply recipe file changes
-        for (const entry of changedRecipeFiles) {
-          const { filename, status, previous } = entry;
-          const name = filename.replace(/\.md$/, "");
-          if (status === "removed") {
-            map.delete(filename);
-            continue;
-          }
-          if (status === "renamed" && previous && previous !== filename) {
-            // Remove old and proceed to add new
-            map.delete(previous);
-          }
-          const markdown = await fetchMarkdown(filename);
-          let images = [];
-          try {
-            images = await listImagesFor(name);
-          } catch {}
-          map.set(filename, {
-            name,
-            filename,
-            imageName: images[0] || null,
-            imageNames: images,
-            markdown,
-          });
-        }
-
-        // Refresh images for impacted recipes (including ones changed above)
-        const toRefreshImages = new Set([
-          ...changedImageRecipeNames,
-          ...[...changedRecipeFiles].map((e) =>
-            e.filename.replace(/\.md$/, ""),
-          ),
-        ]);
-        for (const rname of toRefreshImages) {
-          const filename = `${rname}.md`;
-          const existing = map.get(filename);
-          if (!existing) continue; // skip if recipe not present
-          try {
-            const images = await listImagesFor(rname);
-            existing.imageNames = images;
-            existing.imageName = images[0] || null;
-            map.set(filename, existing);
-          } catch {}
-        }
-
-        const out = Array.from(map.values())
-          .map((r) => ({
-            ...r,
-            // ensure we still have html if markdown is present
-            html: r.markdown ? require("marked").marked.parse(r.markdown) : "",
-          }))
-          .sort((a, b) => a.name.localeCompare(b.name));
-        await fs.promises.mkdir(OUT_DIR, { recursive: true });
-        await fs.promises.writeFile(
-          OUT_FILE,
-          JSON.stringify(out, null, 2),
-          "utf8",
-        );
-        await writeStatic(out);
-        const meta = {
-          schemaVersion: SCHEMA_VERSION,
-          source: {
-            owner: OWNER,
-            repo: REPO,
-            branch: BRANCH,
-            recipesSha,
-            imagesSha,
-          },
-          generatedAt: new Date().toISOString(),
-          count: out.length,
-        };
-        await fs.promises.writeFile(
-          META_FILE,
-          JSON.stringify(meta, null, 2),
-          "utf8",
-        );
+      if (updated) {
+        await writeRecipes(updated);
+        await writeStatic(updated);
+        await writeMetaNow(recipesSha, imagesSha, updated.length);
         console.log(
           `[generate-static-data] Incremental update complete. Wrote ${OUT_FILE} and ${META_FILE}`,
         );
@@ -525,27 +287,7 @@ async function main() {
         console.log(
           "[generate-static-data] No relevant changes detected via compare. Skipping.",
         );
-        await fs.promises.mkdir(OUT_DIR, { recursive: true });
-        await fs.promises.writeFile(
-          META_FILE,
-          JSON.stringify(
-            {
-              schemaVersion: SCHEMA_VERSION,
-              source: {
-                owner: OWNER,
-                repo: REPO,
-                branch: BRANCH,
-                recipesSha,
-                imagesSha,
-              },
-              generatedAt: new Date().toISOString(),
-              count: localRecipes.length,
-            },
-            null,
-            2,
-          ),
-          "utf8",
-        );
+        await writeMetaNow(recipesSha, imagesSha, localRecipes.length);
         return;
       }
     } catch (e) {
@@ -561,55 +303,11 @@ async function main() {
     }
   }
 
-  console.log("[generate-static-data] Fetching recipe list (full)...");
-  const recipes = await listRecipes();
-  const { marked } = await import("marked");
-  console.log(`[generate-static-data] Found ${recipes.length} recipes`);
-
-  const out = [];
-  await fs.promises.mkdir(STATIC_DIR, { recursive: true });
-  for (const { name, filename } of recipes) {
-    console.log(`[generate-static-data] Fetching ${filename}...`);
-    let images = [];
-    try {
-      images = await listImagesFor(name);
-    } catch (e) {
-      if (process.env.CI) {
-        throw new Error(
-          `[generate-static-data] Failed to list images for ${name} in CI: ${e?.message || e}`,
-        );
-      }
-      console.warn(
-        `[generate-static-data] Warning: failed to list images for ${name}:`,
-        e?.message || e,
-      );
-      // Continue without images locally; markdown will still be fetched
-    }
-    const markdown = await fetchMarkdown(filename);
-    const html = marked.parse(markdown);
-    out.push({
-      name,
-      filename,
-      imageName: images[0] || null,
-      imageNames: images,
-      markdown,
-      html,
-    });
-  }
-
-  await fs.promises.mkdir(OUT_DIR, { recursive: true });
-  await fs.promises.writeFile(OUT_FILE, JSON.stringify(out, null, 2), "utf8");
-  const meta = {
-    schemaVersion: SCHEMA_VERSION,
-    source: { owner: OWNER, repo: REPO, branch: BRANCH, recipesSha, imagesSha },
-    generatedAt: new Date().toISOString(),
-    count: out.length,
-  };
-  await fs.promises.writeFile(META_FILE, JSON.stringify(meta, null, 2), "utf8");
-
-  // Render static HTML via React SSR using our app components
+  // Full generation
+  const out = await fullGeneration();
+  await writeRecipes(out);
+  await writeMetaNow(recipesSha, imagesSha, out.length);
   await writeStatic(out);
-
   console.log(`[generate-static-data] Wrote ${OUT_FILE} and ${META_FILE}`);
 }
 
