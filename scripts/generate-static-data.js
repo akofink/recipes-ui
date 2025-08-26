@@ -22,8 +22,6 @@ const OUT_FILE = path.join(OUT_DIR, "recipes.json");
 const META_FILE = path.join(OUT_DIR, "meta.json");
 const STATIC_DIR = path.join(OUT_DIR, "static");
 const NOSCRIPT_JSON = path.join(OUT_DIR, "noscript.json");
-const EDIT_BASE_URL = "https://github.com/akofink/recipes-md/edit/main/recipes";
-const ADD_RECIPE_URL = "https://github.com/akofink/recipes-md/new/main/recipes";
 const SCHEMA_VERSION = 3;
 
 function authHeaders() {
@@ -200,6 +198,7 @@ async function fetchMarkdown(filename) {
   return fetchText(url);
 }
 
+// Legacy fallback-only HTML writer kept for emergencies; SSR is preferred
 function renderStaticPage(name, images, html, filename) {
   return `<!DOCTYPE html>
 <html lang="en">
