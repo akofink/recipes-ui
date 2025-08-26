@@ -686,54 +686,6 @@ async function main() {
       markdown,
       html,
     });
-
-    // Write static HTML page for this recipe
-    const page = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${name} – Recipes</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-  <style>
-    body { height: 100%; }
-    .clean-link { text-decoration: none; color: inherit; }
-    .logo-link { text-decoration: none; color: inherit; padding: 0 1rem; }
-    .app-container-div { height: 100%; border-style: double; border-color: cornsilk; border-top-width: .5rem; padding: 1rem 10% 5rem; }
-    .recipe-card-img { height: 150px; object-fit: cover; }
-    .recipe-card { overflow: hidden; margin: .5rem 0; }
-    .recipe-card-body { height: 50px; }
-    .recipe-card-title { display: block; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
-  </style>
-</head>
-<body>
-  <div class="app-container-div">
-    <nav class="mb-3 d-flex align-items-center">
-      <a href="/" class="logo-link"><strong>Recipes</strong></a>
-    </nav>
-    <main>
-      <h1>${name}</h1>
-      ${
-        images.length
-          ? `<div class="mb-3 row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
-        ${images
-          .map(
-            (img) =>
-              `<div class="col"><img src="https://raw.githubusercontent.com/akofink/recipes-md/main/images/${name}/${img}" alt="${name} ${img}" style="width:100%;height:200px;object-fit:cover;border-radius:6px" /></div>`,
-          )
-          .join("")}
-      </div>`
-          : ""
-      }
-      <article>${html}</article>
-      <p><a class="btn btn-outline-secondary" href="/">Back to recipes</a></p>
-    </main>
-  </div>
-</body>
-</html>`;
-    const dir = path.join(STATIC_DIR, name);
-    await fs.promises.mkdir(dir, { recursive: true });
-    await fs.promises.writeFile(path.join(dir, "index.html"), page, "utf8");
   }
 
   await fs.promises.mkdir(OUT_DIR, { recursive: true });
@@ -746,19 +698,8 @@ async function main() {
   };
   await fs.promises.writeFile(META_FILE, JSON.stringify(meta, null, 2), "utf8");
 
-  // Also write a noscript data blob (JSON) for index.html noscript fallback
-  try {
-    const noscript = {
-      recipes: out.map((r) => ({ name: r.name })),
-    };
-    await fs.promises.writeFile(
-      path.resolve(__dirname, "..", "public", "noscript.json"),
-      JSON.stringify(noscript),
-      "utf8",
-    );
-  } catch (e) {
-    console.warn("[generate-static-data] Failed to write noscript.json", e);
-  }
+  // Render static HTML via React SSR using our app components
+  await writeStatic(out);
 
   console.log(`[generate-static-data] Wrote ${OUT_FILE} and ${META_FILE}`);
 }
