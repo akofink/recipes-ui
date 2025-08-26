@@ -1,9 +1,7 @@
-import fs from "fs";
 import { OWNER, REPO, BRANCH, SCHEMA_VERSION } from "./config";
 import {
   OUT_FILE,
   META_FILE,
-  STATIC_DIR,
   fileExists,
   readLocalMeta,
   readLocalRecipes,
@@ -14,21 +12,16 @@ import {
   latestCommitShaForPath,
   branchHeadSha,
   compareCommits,
-  listRecipes,
   listImagesFor,
   fetchMarkdown,
 } from "./github";
+import { fullGeneration } from "./build";
+import {
+  renderHtml as renderHtmlMd,
+  ensureHtml as ensureHtmlMd,
+} from "./markdown";
 import { writeStatic } from "./ssr";
 import type { GenerationMeta, GhCompare, GhCompareFile, Recipe } from "./types";
-
-async function renderHtml(md: string): Promise<string> {
-  const mod = (await import("marked")) as unknown as {
-    marked?: { parse: (s: string) => string | Promise<string> };
-    parse?: (s: string) => string | Promise<string>;
-  };
-  const parser = mod.marked?.parse ?? mod.parse;
-  return (parser ? await parser(md) : md) as string;
-}
 
 export async function ensureHtml(
   recipes: Recipe[] | null | undefined,
@@ -38,7 +31,7 @@ export async function ensureHtml(
   for (const r of list) {
     let html = r.html || "";
     if (!html && r.markdown) {
-      html = await renderHtml(r.markdown);
+      html = await renderHtmlMd(r.markdown);
     }
     out.push({ ...r, html });
   }
@@ -216,7 +209,7 @@ export async function incrementalUpdate(
   for (const r of Array.from(map.values())) {
     out.push({
       ...r,
-      html: r.markdown ? await renderHtml(r.markdown) : "",
+      html: r.markdown ? await renderHtmlMd(r.markdown) : "",
     });
   }
   out.sort((a, b) => a.name.localeCompare(b.name));
@@ -224,14 +217,14 @@ export async function incrementalUpdate(
   return out;
 }
 
-export async function fullGeneration(): Promise<Recipe[]> {
+// Keeping deprecated for reference during refactor; not used by main flow
+export async function fullGeneration_DEPRECATED(): Promise<Recipe[]> {
   console.log("[generate-static-data] Fetching recipe list (full)...");
-  const recipes = await listRecipes();
-  console.log(`[generate-static-data] Found ${recipes.length} recipes`);
-
   const out: Recipe[] = [];
-  await fs.promises.mkdir(STATIC_DIR, { recursive: true });
-  for (const { name, filename } of recipes) {
+  for (const { name, filename } of [] as Array<{
+    name: string;
+    filename: string;
+  }>) {
     console.log(`[generate-static-data] Fetching ${filename}...`);
     let images: string[] = [];
     try {
@@ -249,7 +242,7 @@ export async function fullGeneration(): Promise<Recipe[]> {
       );
     }
     const markdown = await fetchMarkdown(filename);
-    const html = await renderHtml(markdown);
+    const html = await renderHtmlMd(markdown);
     out.push({
       name,
       filename,
@@ -273,7 +266,7 @@ export async function run(): Promise<void> {
   if (outFileExists && isUpToDate(localMeta, recipesSha, imagesSha)) {
     console.log("[generate-static-data] Up to date. Skipping generation.");
     try {
-      await writeStatic(await ensureHtml(localRecipes || []));
+      await writeStatic(await ensureHtmlMd(localRecipes || []));
     } catch (e: unknown) {
       console.warn(
         "[generate-static-data] Writing static pages from local data failed:",
@@ -332,7 +325,7 @@ export async function run(): Promise<void> {
   }
 
   // Full generation
-  const out = await fullGeneration();
+  const out = await fullGeneration(); // from scripts/lib/build
   await writeRecipes(out);
   await writeMetaNow(recipesSha, imagesSha, out.length);
   await writeStatic(out);
