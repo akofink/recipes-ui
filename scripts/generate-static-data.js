@@ -197,53 +197,6 @@ async function fetchMarkdown(filename) {
   return fetchText(url);
 }
 
-// Legacy fallback-only HTML writer kept for emergencies; SSR is preferred
-function renderStaticPage(name, images, html, filename) {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${name} – Recipes</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-  <style>
-    body { height: 100%; }
-    .clean-link { text-decoration: none; color: inherit; }
-    .logo-link { text-decoration: none; color: inherit; padding: 0 1rem; }
-    .app-container-div { height: 100%; border-style: double; border-color: cornsilk; border-top-width: .5rem; padding: 1rem 10% 5rem; }
-    .recipe-card-img { height: 150px; object-fit: cover; }
-    .recipe-card { overflow: hidden; margin: .5rem 0; }
-    .recipe-card-body { height: 50px; }
-    .recipe-card-title { display: block; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
-  </style>
-</head>
-<body>
-  <div class="app-container-div">
-    <nav class="mb-3 d-flex align-items-center">
-      <a href="/" class="logo-link"><strong>Recipes</strong></a>
-    </nav>
-    <main>
-      <h1>${name}</h1>
-      ${
-        images.length
-          ? `<div class="mb-3 row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
-        ${images
-          .map(
-            (img) =>
-              `<div class=\"col\"><img src=\"https://raw.githubusercontent.com/akofink/recipes-md/main/images/${name}/${img}\" alt=\"${name} ${img}\" style=\"width:100%;height:200px;object-fit:cover;border-radius:6px\" /></div>`,
-          )
-          .join("")}
-      </div>`
-          : ""
-      }
-      <article>${html}</article>
-      <p><a class="btn btn-outline-secondary" href="/">Back to recipes</a></p>
-    </main>
-  </div>
-</body>
-</html>`;
-}
-
 async function writeStatic(recipes) {
   // Try to SSR the React index and per-recipe pages to static HTML
   // Note: Recipes/Recipe components include Navigation; we do not add it here to avoid duplication
@@ -359,65 +312,8 @@ ${body}
       e?.message || e,
     );
 
-    // fallback index listing
-    try {
-      const links = (recipes || [])
-        .map((r) => `<li><a href="/static/${r.name}/">${r.name}</a></li>`)
-        .join("\n");
-      const index = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Recipes – Static Index</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body>
-  <div class="app-container-div">
-    <nav class="mb-3 d-flex align-items-center">
-      <a href="/" class="logo-link"><strong>Recipes</strong></a>
-    </nav>
-    <main>
-      <h1>Recipes</h1>
-      <ul>
-        ${links}
-      </ul>
-    </main>
-  </div>
-</body>
-</html>`;
-      await fs.promises.mkdir(STATIC_DIR, { recursive: true });
-      await fs.promises.writeFile(
-        path.join(STATIC_DIR, "index.html"),
-        index,
-        "utf8",
-      );
-    } catch (e2) {
-      console.warn(
-        "[generate-static-data] Failed to write fallback static index:",
-        e2?.message || e2,
-      );
-    }
-
-    // fallback per-recipe minimal pages
-    for (const r of recipes) {
-      const dir = path.join(STATIC_DIR, r.name);
-      try {
-        await fs.promises.mkdir(dir, { recursive: true });
-        const page = renderStaticPage(
-          r.name,
-          r.imageNames || [],
-          r.html || "",
-          r.filename,
-        );
-        await fs.promises.writeFile(path.join(dir, "index.html"), page, "utf8");
-      } catch (e3) {
-        console.warn(
-          `[generate-static-data] Failed to write fallback static page for ${r.name}:`,
-          e3?.message || e3,
-        );
-      }
-    }
+    // No legacy fallback pages; fail fast so the issue is visible in CI
+    throw e;
   }
 }
 
