@@ -267,11 +267,7 @@ async function writeStatic(recipes) {
         null,
         React.createElement(Route, {
           path: "/",
-          element: React.createElement(
-            Navigation,
-            null,
-            React.createElement(Recipes, null),
-          ),
+          element: React.createElement(Recipes, null),
         }),
       ),
     );
@@ -322,11 +318,7 @@ ${indexBody}
           null,
           React.createElement(Route, {
             path: "/:fileBasename",
-            element: React.createElement(
-              Navigation,
-              null,
-              React.createElement(RecipeView, null),
-            ),
+            element: React.createElement(RecipeView, null),
           }),
         ),
       );
