@@ -71,6 +71,10 @@ async function robustFetch(url, init = {}, attempt = 1) {
       throw new Error(msg);
     }
     if (retryAfter || remaining === "0" || reset) {
+      if (process.env.CI) {
+        const msg = `Rate limited in CI (HTTP ${res.status}). Set GITHUB_TOKEN or increase GENERATE_MAX_WAIT_MS.`;
+        throw new Error(msg);
+      }
       console.warn(
         `[generate-static-data] Rate limited (HTTP ${res.status}). Waiting ~${Math.ceil(waitMs / 1000)}s before retry...`,
       );
@@ -304,13 +308,8 @@ ${body}
       await fs.promises.writeFile(path.join(dir, "index.html"), shell, "utf8");
     }
   } catch (e) {
-    console.warn(
-      "[generate-static-data] SSR failed; falling back to simple static pages:",
-      e?.message || e,
-    );
-
-    // No legacy fallback pages; fail fast so the issue is visible in CI
-    throw e;
+    // Fail fast — do not silently ship partial SSR output
+    throw new Error(`[generate-static-data] SSR failed: ${e?.message || e}`);
   }
 }
 
@@ -325,6 +324,12 @@ async function main() {
       latestCommitShaForPath("images"),
     ]);
   } catch (e) {
+    if (process.env.CI) {
+      // In CI, fail fast instead of falling back to possibly stale local data
+      throw new Error(
+        `[generate-static-data] Unable to query upstream SHAs in CI: ${e?.message || e}`,
+      );
+    }
     console.warn(
       "[generate-static-data] Unable to query upstream SHAs; attempting offline/static generation from local data:",
       e?.message || e,
@@ -544,6 +549,11 @@ async function main() {
         return;
       }
     } catch (e) {
+      if (process.env.CI) {
+        throw new Error(
+          `[generate-static-data] Incremental update failed in CI: ${e?.message || e}`,
+        );
+      }
       console.warn(
         "[generate-static-data] Incremental update failed; falling back to full generation:",
         e?.message || e,
@@ -564,11 +574,16 @@ async function main() {
     try {
       images = await listImagesFor(name);
     } catch (e) {
+      if (process.env.CI) {
+        throw new Error(
+          `[generate-static-data] Failed to list images for ${name} in CI: ${e?.message || e}`,
+        );
+      }
       console.warn(
         `[generate-static-data] Warning: failed to list images for ${name}:`,
         e?.message || e,
       );
-      // Continue without images; markdown will still be fetched
+      // Continue without images locally; markdown will still be fetched
     }
     const markdown = await fetchMarkdown(filename);
     const html = marked.parse(markdown);
