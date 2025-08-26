@@ -118,7 +118,7 @@ const config: Configuration = {
         "public/empty.svg",
         "public/spinner.svg",
         { from: "src/generated/static", to: "static" },
-        "src/generated/noscript.json",
+        // noscript.json removed; static site now fully SSR-prerendered
       ],
     }),
   ],

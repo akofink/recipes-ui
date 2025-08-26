@@ -21,7 +21,6 @@ const OUT_DIR = path.resolve(__dirname, "..", "src", "generated");
 const OUT_FILE = path.join(OUT_DIR, "recipes.json");
 const META_FILE = path.join(OUT_DIR, "meta.json");
 const STATIC_DIR = path.join(OUT_DIR, "static");
-const NOSCRIPT_JSON = path.join(OUT_DIR, "noscript.json");
 const SCHEMA_VERSION = 3;
 
 function authHeaders() {
@@ -419,18 +418,6 @@ ${body}
         );
       }
     }
-  }
-
-  // noscript data to power the link and future offline use
-  try {
-    const noscript = { recipes: recipes.map((r) => ({ name: r.name })) };
-    await fs.promises.writeFile(
-      NOSCRIPT_JSON,
-      JSON.stringify(noscript),
-      "utf8",
-    );
-  } catch (e) {
-    console.warn("[generate-static-data] Failed to write noscript.json", e);
   }
 }
 
