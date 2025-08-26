@@ -253,7 +253,6 @@ async function writeStatic(recipes) {
     const React = require("react");
     const { renderToStaticMarkup } = require("react-dom/server");
     const { StaticRouter } = require("react-router-dom/server");
-    const Navigation = require("../src/layouts/navigation").default;
     const Recipes = require("../src/layouts/recipes").Recipes;
     const RecipeView = require("../src/layouts/recipe").Recipe;
     const { Routes, Route } = require("react-router-dom");
