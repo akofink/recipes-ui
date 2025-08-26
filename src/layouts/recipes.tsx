@@ -9,14 +9,10 @@ import { RecipeData } from "../types";
 import Navigation from "./navigation";
 
 export const Recipes: FC = () => {
-  const [recipes, setRecipes] = useState<RecipeData[]>([]);
+  const initialRecipes = recipesData as unknown as RecipeData[];
+  const recipes: RecipeData[] = initialRecipes;
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") || "");
-
-  useEffect(() => {
-    // Static data loaded from generated JSON at build time
-    setRecipes(recipesData as unknown as RecipeData[]);
-  }, []);
 
   // Keep local state in sync with URL (back/forward navigation)
   useEffect(() => {
