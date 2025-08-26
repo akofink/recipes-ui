@@ -1,5 +1,5 @@
 import fs from "fs";
-import { renderHtml } from "./markdown";
+import { markdownToHtml } from "./markdown";
 import { STATIC_DIR } from "./io";
 import { listRecipes, listImagesFor, fetchMarkdown } from "./github";
 import type { Recipe } from "./types";
@@ -29,7 +29,7 @@ export async function fullGeneration(): Promise<Recipe[]> {
       );
     }
     const markdown = await fetchMarkdown(filename);
-    const html = await renderHtml(markdown);
+    const html = await markdownToHtml(markdown);
     out.push({
       name,
       filename,

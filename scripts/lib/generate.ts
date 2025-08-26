@@ -16,13 +16,14 @@ import {
   fetchMarkdown,
 } from "./github";
 import { fullGeneration } from "./build";
-import {
-  renderHtml as renderHtmlMd,
-  ensureHtml as ensureHtmlMd,
-} from "./markdown";
+import { markdownToHtml, withHtmlFromMarkdown } from "./markdown";
 import { writeStatic } from "./ssr";
 import type { GenerationMeta, GhCompare, GhCompareFile, Recipe } from "./types";
 
+/**
+ * Produce a new array of recipes where each has an html field.
+ * This is just a pass-through helper to markdown.withHtmlFromMarkdown.
+ */
 export async function ensureHtml(
   recipes: Recipe[] | null | undefined,
 ): Promise<Recipe[]> {
@@ -31,7 +32,7 @@ export async function ensureHtml(
   for (const r of list) {
     let html = r.html || "";
     if (!html && r.markdown) {
-      html = await renderHtmlMd(r.markdown);
+      html = await markdownToHtml(r.markdown);
     }
     out.push({ ...r, html });
   }
@@ -63,7 +64,7 @@ export async function getUpstreamShas(): Promise<{
     );
     const local = readLocalRecipes();
     if (fileExists(OUT_FILE) && Array.isArray(local) && local.length) {
-      await writeStatic(await ensureHtml(local));
+      await writeStatic(await withHtmlFromMarkdown(local));
       console.log(
         "[generate-static-data] Wrote static pages from local recipes.json and exiting.",
       );
@@ -209,7 +210,7 @@ export async function incrementalUpdate(
   for (const r of Array.from(map.values())) {
     out.push({
       ...r,
-      html: r.markdown ? await renderHtmlMd(r.markdown) : "",
+      html: r.markdown ? await markdownToHtml(r.markdown) : "",
     });
   }
   out.sort((a, b) => a.name.localeCompare(b.name));
@@ -242,7 +243,7 @@ export async function fullGeneration_DEPRECATED(): Promise<Recipe[]> {
       );
     }
     const markdown = await fetchMarkdown(filename);
-    const html = await renderHtmlMd(markdown);
+    const html = await markdownToHtml(markdown);
     out.push({
       name,
       filename,
@@ -266,7 +267,7 @@ export async function run(): Promise<void> {
   if (outFileExists && isUpToDate(localMeta, recipesSha, imagesSha)) {
     console.log("[generate-static-data] Up to date. Skipping generation.");
     try {
-      await writeStatic(await ensureHtmlMd(localRecipes || []));
+      await writeStatic(await withHtmlFromMarkdown(localRecipes || []));
     } catch (e: unknown) {
       console.warn(
         "[generate-static-data] Writing static pages from local data failed:",
