@@ -59,7 +59,7 @@ yarn build
 npm run build
 ```
 
-The optimized static assets will be emitted to `dist/`. Serve that folder with any static file server.
+The optimized static assets will be emitted to `dist/`. Serve that folder with any static file server. Pre-rendered static pages are under `dist/static/`.
 
 ## Deployment
 

@@ -247,6 +247,7 @@ function renderStaticPage(name, images, html, filename) {
 
 async function writeStatic(recipes) {
   // Try to SSR the React index and per-recipe pages to static HTML
+  // Note: Recipes/Recipe components include Navigation; we do not add it here to avoid duplication
   try {
     require("ts-node").register({ transpileOnly: true });
     const React = require("react");
