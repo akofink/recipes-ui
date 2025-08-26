@@ -258,11 +258,22 @@ async function writeStatic(recipes) {
     const RecipeView = require("../src/layouts/recipe").Recipe;
     const { Routes, Route } = require("react-router-dom");
 
-    // 1) Index page
+    // 1) Index page (render through Routes so hooks relying on matches work)
     const indexTree = React.createElement(
       StaticRouter,
       { location: "/" },
-      React.createElement(Navigation, null, React.createElement(Recipes, null)),
+      React.createElement(
+        Routes,
+        null,
+        React.createElement(Route, {
+          path: "/",
+          element: React.createElement(
+            Navigation,
+            null,
+            React.createElement(Recipes, null),
+          ),
+        }),
+      ),
     );
     let indexBody = renderToStaticMarkup(indexTree);
     indexBody = indexBody.replace(
@@ -307,9 +318,16 @@ ${indexBody}
         StaticRouter,
         { location },
         React.createElement(
-          Navigation,
+          Routes,
           null,
-          React.createElement(RecipeView, null),
+          React.createElement(Route, {
+            path: "/:fileBasename",
+            element: React.createElement(
+              Navigation,
+              null,
+              React.createElement(RecipeView, null),
+            ),
+          }),
         ),
       );
       let body = renderToStaticMarkup(recipeTree);
