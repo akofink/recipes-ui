@@ -20,25 +20,6 @@ import { markdownToHtml, withHtmlFromMarkdown } from "./markdown";
 import { writeStatic } from "./ssr";
 import type { GenerationMeta, GhCompare, GhCompareFile, Recipe } from "./types";
 
-/**
- * Produce a new array of recipes where each has an html field.
- * This is just a pass-through helper to markdown.withHtmlFromMarkdown.
- */
-export async function ensureHtml(
-  recipes: Recipe[] | null | undefined,
-): Promise<Recipe[]> {
-  const list = recipes || [];
-  const out: Recipe[] = [];
-  for (const r of list) {
-    let html = r.html || "";
-    if (!html && r.markdown) {
-      html = await markdownToHtml(r.markdown);
-    }
-    out.push({ ...r, html });
-  }
-  return out;
-}
-
 export async function getUpstreamShas(): Promise<{
   recipesSha: string | null;
   imagesSha: string | null;
