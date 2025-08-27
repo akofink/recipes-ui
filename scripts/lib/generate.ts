@@ -15,11 +15,15 @@ import {
   listImagesFor,
   fetchMarkdown,
 } from "./github";
-import { fullGeneration } from "./build";
+import { fullGeneration } from "./build"; // full generation lives in build.ts
 import { markdownToHtml, withHtmlFromMarkdown } from "./markdown";
 import { writeStatic } from "./ssr";
 import type { GenerationMeta, GhCompare, GhCompareFile, Recipe } from "./types";
 
+/**
+ * Query upstream commit SHAs for the recipes/ and images/ paths (or branch head).
+ * Falls back to using local recipes.json to build static HTML if offline.
+ */
 export async function getUpstreamShas(): Promise<{
   recipesSha: string | null;
   imagesSha: string | null;
@@ -61,6 +65,9 @@ export async function getUpstreamShas(): Promise<{
   return { recipesSha, imagesSha, offlineDone: false };
 }
 
+/**
+ * Check whether the local meta already reflects the current upstream SHAs.
+ */
 export function isUpToDate(
   localMeta: GenerationMeta | null,
   recipesSha: string | null,
@@ -76,6 +83,9 @@ export function isUpToDate(
   );
 }
 
+/**
+ * Write the meta.json file with the inputs used for generation.
+ */
 export async function writeMetaNow(
   recipesSha: string | null,
   imagesSha: string | null,
@@ -90,6 +100,10 @@ export async function writeMetaNow(
   await writeMeta(meta);
 }
 
+/**
+ * Apply upstream changes to a local Recipe[] using GitHub compare results.
+ * Returns a new, sorted Recipe[] or null if no changes affect recipes/images.
+ */
 export async function incrementalUpdate(
   localRecipes: Recipe[],
   localMeta: GenerationMeta,
@@ -199,44 +213,10 @@ export async function incrementalUpdate(
   return out;
 }
 
-// Keeping deprecated for reference during refactor; not used by main flow
-export async function fullGeneration_DEPRECATED(): Promise<Recipe[]> {
-  console.log("[generate-static-data] Fetching recipe list (full)...");
-  const out: Recipe[] = [];
-  for (const { name, filename } of [] as Array<{
-    name: string;
-    filename: string;
-  }>) {
-    console.log(`[generate-static-data] Fetching ${filename}...`);
-    let images: string[] = [];
-    try {
-      images = await listImagesFor(name);
-    } catch (e: unknown) {
-      if (process.env.CI) {
-        const msg = e instanceof Error ? e.message : String(e);
-        throw new Error(
-          `[generate-static-data] Failed to list images for ${name} in CI: ${msg}`,
-        );
-      }
-      console.warn(
-        `[generate-static-data] Warning: failed to list images for ${name}:`,
-        e instanceof Error ? e.message : String(e),
-      );
-    }
-    const markdown = await fetchMarkdown(filename);
-    const html = await markdownToHtml(markdown);
-    out.push({
-      name,
-      filename,
-      imageName: images[0] || null,
-      imageNames: images,
-      markdown,
-      html,
-    });
-  }
-  return out;
-}
-
+/**
+ * Main orchestration: decide whether to skip, do incremental update, or full generation,
+ * then write recipes.json, meta.json, and static HTML.
+ */
 export async function run(): Promise<void> {
   const { recipesSha, imagesSha, offlineDone } = await getUpstreamShas();
   if (offlineDone) return;
