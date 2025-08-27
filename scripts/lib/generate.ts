@@ -17,6 +17,7 @@ import {
 } from "./github";
 import { fullGeneration } from "./build"; // full generation lives in build.ts
 import { markdownToHtml, withHtmlFromMarkdown } from "./markdown";
+import { incrementalUpdate as incrementalUpdateFromModule } from "./incremental";
 import { writeStatic } from "./ssr";
 import type { GenerationMeta, GhCompare, GhCompareFile, Recipe } from "./types";
 
@@ -104,7 +105,7 @@ export async function writeMetaNow(
  * Apply upstream changes to a local Recipe[] using GitHub compare results.
  * Returns a new, sorted Recipe[] or null if no changes affect recipes/images.
  */
-export async function incrementalUpdate(
+export async function incrementalUpdate_DEPRECATED(
   localRecipes: Recipe[],
   localMeta: GenerationMeta,
   recipesSha: string,
@@ -251,7 +252,7 @@ export async function run(): Promise<void> {
       "[generate-static-data] Attempting incremental update using compare API...",
     );
     try {
-      const updated = await incrementalUpdate(
+      const updated = await incrementalUpdateFromModule(
         localRecipes,
         localMeta,
         recipesSha,
