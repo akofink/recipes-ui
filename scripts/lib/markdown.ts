@@ -8,7 +8,9 @@ import type { Recipe } from "./types";
  * to avoid ESM/CJS interop issues when running under ts-node.
  */
 export async function markdownToHtml(md: string): Promise<string> {
-  const mod = (await import("marked")) as unknown as {
+  // Use eval to prevent webpack/ts-node from statically analyzing the import
+  const importMarked = new Function('return import("marked")');
+  const mod = (await importMarked()) as unknown as {
     marked?: { parse: (s: string) => string | Promise<string> };
     parse?: (s: string) => string | Promise<string>;
   };
