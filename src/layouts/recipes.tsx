@@ -1,18 +1,36 @@
 import { FC, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Container, Row, Form } from "react-bootstrap";
+import { Container, Row, Form, Spinner, Alert } from "react-bootstrap";
 import RecipeCard from "../components/recipe-card";
-
-// Note: generated at build-time. During development, run `yarn generate` first.
-import recipesData from "../generated/recipes.json";
+import { fetchRecipes } from "../services/recipes";
 import { RecipeData } from "../types";
 import Navigation from "./navigation";
 
 export const Recipes: FC = () => {
-  const initialRecipes = recipesData as unknown as RecipeData[];
-  const recipes: RecipeData[] = initialRecipes;
+  const [recipes, setRecipes] = useState<RecipeData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") || "");
+
+  // Load recipes on mount
+  useEffect(() => {
+    const loadRecipes = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchRecipes();
+        setRecipes(data);
+        setError(null);
+      } catch (err) {
+        setError("Failed to load recipes. Please try again later.");
+        console.error("Error loading recipes:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRecipes();
+  }, []);
 
   // Keep local state in sync with URL (back/forward navigation)
   useEffect(() => {
@@ -32,6 +50,32 @@ export const Recipes: FC = () => {
     () => filtered.map((r) => <RecipeCard key={r.name} name={r.name} />),
     [filtered],
   );
+
+  if (loading) {
+    return (
+      <Navigation>
+        <Container className="text-center py-5">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Loading recipes...</span>
+          </Spinner>
+          <div className="mt-2">Loading recipes...</div>
+        </Container>
+      </Navigation>
+    );
+  }
+
+  if (error) {
+    return (
+      <Navigation>
+        <Container>
+          <Alert variant="danger" className="my-3">
+            <Alert.Heading>Oops! Something went wrong</Alert.Heading>
+            <p>{error}</p>
+          </Alert>
+        </Container>
+      </Navigation>
+    );
+  }
 
   return (
     <Navigation>

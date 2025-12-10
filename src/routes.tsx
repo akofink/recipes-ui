@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import recipesData from "./generated/recipes.json";
+import { findRecipe } from "./services/recipes";
 
 const App = lazy(() => import("./App"));
 const Recipe = lazy(() =>
@@ -11,15 +11,24 @@ const suspense = (el: JSX.Element) => (
   <Suspense fallback={<div>Loading…</div>}>{el}</Suspense>
 );
 
-const recipeLoader = ({ params }: { params: { fileBasename?: string } }) => {
+const recipeLoader = async ({
+  params,
+}: {
+  params: { fileBasename?: string };
+}) => {
   const name = (params.fileBasename || "").replace(/\/$/, "");
   const filename = `${name}.md`;
-  const list = (recipesData as unknown as Array<{ filename: string }>) || [];
-  const exists = list.some((r) => r.filename === filename);
-  if (!exists) {
+
+  try {
+    const recipe = await findRecipe(filename);
+    if (!recipe) {
+      throw new Response("Not Found", { status: 404 });
+    }
+    return null;
+  } catch (error) {
+    console.error("Error loading recipe:", error);
     throw new Response("Not Found", { status: 404 });
   }
-  return null;
 };
 
 export default [

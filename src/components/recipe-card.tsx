@@ -1,14 +1,27 @@
-import { FC, useMemo } from "react";
+import { FC, useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Card, Col } from "react-bootstrap";
 import { RECIPESMD_RAW } from "../constants";
 import { GithubFile, RecipeData } from "../types";
-import recipesData from "../generated/recipes.json";
+import { findRecipeByName } from "../services/recipes";
 
 export const RecipeCard: FC<GithubFile> = ({ name }) => {
-  const recipe = (recipesData as unknown as RecipeData[]).find(
-    (r) => r.name === name,
-  );
+  const [recipe, setRecipe] = useState<RecipeData | null>(null);
+
+  useEffect(() => {
+    const loadRecipe = async () => {
+      if (!name) return;
+      try {
+        const data = await findRecipeByName(name);
+        setRecipe(data);
+      } catch (err) {
+        console.error("Error loading recipe for card:", err);
+      }
+    };
+
+    loadRecipe();
+  }, [name]);
+
   const imageName = recipe?.imageName ?? null;
   const imageSrc = useMemo(
     () =>

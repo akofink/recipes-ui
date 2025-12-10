@@ -1,11 +1,10 @@
-import { useMemo } from "react";
+import { useState, useEffect } from "react";
 // Markdown pre-rendered in build step; use 'html' for rendering
 import { useParams, useSearchParams } from "react-router-dom";
 import Navigation from "./navigation";
-import { Row, Col, Modal } from "react-bootstrap";
+import { Row, Col, Modal, Spinner, Alert } from "react-bootstrap";
 import { RECIPESMD_RAW } from "../constants";
-// Note: generated at build-time. During development, run `yarn generate` first.
-import recipesData from "../generated/recipes.json";
+import { findRecipe } from "../services/recipes";
 import { RecipeData } from "../types";
 
 export const EDIT_BASE_URL =
@@ -15,10 +14,28 @@ export const Recipe = () => {
   const { fileBasename } = useParams();
   const name = fileBasename?.replace(/\/$/, "");
   const filename = `${name}.md`;
-  const recipe = useMemo(() => {
-    const list = recipesData as unknown as RecipeData[];
-    return list.find((r) => r.filename === filename) || null;
+  const [recipe, setRecipe] = useState<RecipeData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadRecipe = async () => {
+      try {
+        setLoading(true);
+        const data = await findRecipe(filename);
+        setRecipe(data);
+        setError(null);
+      } catch (err) {
+        setError("Failed to load recipe. Please try again later.");
+        console.error("Error loading recipe:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRecipe();
   }, [filename]);
+
   const html = recipe?.html || "";
   const imageNames: string[] = (recipe?.imageNames || []) as string[];
   const [searchParams, setSearchParams] = useSearchParams();
@@ -33,6 +50,30 @@ export const Recipe = () => {
     next.delete("img");
     setSearchParams(next, { replace: false });
   };
+
+  if (loading) {
+    return (
+      <Navigation>
+        <div className="text-center py-5">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Loading recipe...</span>
+          </Spinner>
+          <div className="mt-2">Loading {name}...</div>
+        </div>
+      </Navigation>
+    );
+  }
+
+  if (error || !recipe) {
+    return (
+      <Navigation>
+        <Alert variant="danger" className="my-3">
+          <Alert.Heading>Recipe not found</Alert.Heading>
+          <p>{error || `Recipe "${name}" could not be found.`}</p>
+        </Alert>
+      </Navigation>
+    );
+  }
 
   return (
     <Navigation>
