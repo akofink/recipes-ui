@@ -123,6 +123,10 @@ const config: Configuration = {
       ],
     }),
   ],
+  performance: {
+    maxAssetSize: 500000, // 500 KiB instead of 244 KiB
+    maxEntrypointSize: 500000, // 500 KiB instead of 244 KiB
+  },
   ...(mode === "development" ? devExports : {}),
 };
 
