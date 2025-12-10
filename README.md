@@ -6,7 +6,7 @@ A React + TypeScript single-page app built with Webpack and deployed to GitHub P
 
 ## Prerequisites
 
-- Node.js LTS (18.x recommended). This repo includes an `.nvmrc`; if you use `nvm`, run `nvm use`.
+- Node.js LTS (22.x recommended). This repo includes an `.nvmrc`; if you use `nvm`, run `nvm use`.
 - Yarn (v1) or npm. CI uses Yarn, examples below use Yarn, but npm works too.
 - Git
 
@@ -23,23 +23,24 @@ A React + TypeScript single-page app built with Webpack and deployed to GitHub P
    # or install if needed
    nvm install
    ```
-3. Install dependencies and generate data
-   - For development, run the generator once to create `src/generated/recipes.json`:
-     ```bash
-     yarn generate
-     ```
+3. Install dependencies
    ```bash
    yarn install
    # or
    npm install
    ```
-4. Start the development server (with HMR) — ensure `src/generated/recipes.json` exists (use `yarn generate`)
-   ```bash
-   yarn start
-   # or
-   npm run start
-   ```
-   By default the app serves on http://localhost:3000. You can override the host/port via environment variables when starting:
+4. Generate data and start the development server
+   - First, generate the recipe data:
+     ```bash
+     yarn generate
+     ```
+   - Then start the development server (with HMR):
+     ```bash
+     yarn start
+     # or
+     npm run start
+     ```
+     By default the app serves on http://localhost:3000. You can override the host/port via environment variables when starting:
    ```bash
    PORT=4000 HOST=127.0.0.1 yarn start
    ```
@@ -51,6 +52,7 @@ A React + TypeScript single-page app built with Webpack and deployed to GitHub P
 - `yarn generate` – Generate static data from recipes-md repository (creates `src/generated/recipes.json`)
 - `yarn build` – Create a production build in `dist/` (automatically runs `yarn generate` first)
 - `yarn clean` – Remove generated files and build output (`src/generated/` and `dist/`)
+- `yarn check` – Run typecheck, lint, and format check (used in CI)
 - `yarn deploy` – Publish `dist/` to the `gh-pages` branch using `gh-pages`
 
 ## Building for production
@@ -101,7 +103,8 @@ yarn deploy
 src/
   components/        # Reusable UI building blocks
   layouts/           # Route-level screens (recipes list, recipe detail, error)
-  util/              # Helper utilities (GitHub fetch wrappers)
+  services/          # Data fetching and business logic
+  util/              # Helper utilities
   index.tsx          # App entry; sets up router
   App.tsx            # Root component
   routes.tsx         # Route definitions
