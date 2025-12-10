@@ -18,7 +18,7 @@ import {
 import { fullGeneration } from "./build"; // full generation lives in build.ts
 import { markdownToHtml, withHtmlFromMarkdown } from "./markdown";
 import { incrementalUpdate as incrementalUpdateFromModule } from "./incremental";
-import { writeStatic } from "./ssr";
+// Lazy import to avoid circular dependency issues
 import type { GenerationMeta, GhCompare, GhCompareFile, Recipe } from "./types";
 
 /**
@@ -50,6 +50,7 @@ export async function getUpstreamShas(): Promise<{
     );
     const local = readLocalRecipes();
     if (fileExists(OUT_FILE) && Array.isArray(local) && local.length) {
+      const { writeStatic } = await import("./ssr");
       await writeStatic(await withHtmlFromMarkdown(local));
       console.log(
         "[generate-static-data] Wrote static pages from local recipes.json and exiting.",
@@ -229,6 +230,7 @@ export async function run(): Promise<void> {
   if (outFileExists && isUpToDate(localMeta, recipesSha, imagesSha)) {
     console.log("[generate-static-data] Up to date. Skipping generation.");
     try {
+      const { writeStatic } = await import("./ssr");
       await writeStatic(await withHtmlFromMarkdown(localRecipes || []));
     } catch (e: unknown) {
       console.warn(
@@ -260,6 +262,7 @@ export async function run(): Promise<void> {
       );
       if (updated) {
         await writeRecipes(updated);
+        const { writeStatic } = await import("./ssr");
         await writeStatic(updated);
         await writeMetaNow(recipesSha, imagesSha, updated.length);
         console.log(
@@ -290,7 +293,8 @@ export async function run(): Promise<void> {
   // Full generation
   const out = await fullGeneration(); // from scripts/lib/build
   await writeRecipes(out);
-  await writeMetaNow(recipesSha, imagesSha, out.length);
+  const { writeStatic } = await import("./ssr");
   await writeStatic(out);
+  await writeMetaNow(recipesSha, imagesSha, out.length);
   console.log(`[generate-static-data] Wrote ${OUT_FILE} and ${META_FILE}`);
 }

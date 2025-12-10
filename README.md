@@ -48,7 +48,9 @@ A React + TypeScript single-page app built with Webpack and deployed to GitHub P
 
 - `yarn start` – Run webpack-dev-server with hot reload
 - `yarn watch` – Rebuild on file changes (without dev server)
-- `yarn build` – Create a production build in `dist/` (runs static data generation first)
+- `yarn generate` – Generate static data from recipes-md repository (creates `src/generated/recipes.json`)
+- `yarn build` – Create a production build in `dist/` (automatically runs `yarn generate` first)
+- `yarn clean` – Remove generated files and build output (`src/generated/` and `dist/`)
 - `yarn deploy` – Publish `dist/` to the `gh-pages` branch using `gh-pages`
 
 ## Building for production
@@ -59,7 +61,9 @@ yarn build
 npm run build
 ```
 
-The optimized static assets will be emitted to `dist/`. Serve that folder with any static file server. Pre-rendered static pages are under `dist/static/`.
+The `yarn build` command automatically generates static data from the recipes-md repository and then creates an optimized production build. The static assets will be emitted to `dist/`. Serve that folder with any static file server. Pre-rendered static pages are under `dist/static/`.
+
+**Note:** You don't need to run `yarn generate` manually before building - the build process handles this automatically.
 
 ## Deployment
 

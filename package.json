@@ -48,6 +48,7 @@
     "generate": "node scripts/generate-static-data.js",
     "build": "NODE_ENV=production webpack",
     "build-dev": "webpack",
+    "clean": "rm -rf src/generated dist",
     "deploy": "gh-pages deploy -d dist",
     "watch": "webpack --watch",
     "start": "webpack serve",
