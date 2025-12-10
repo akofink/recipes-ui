@@ -40,6 +40,7 @@ export const Navigation: FC = ({ children }) => {
       window.location.hostname,
     );
     if (isLocal) return;
+
     type Gtag = (command: string, ...params: unknown[]) => void;
     const w = window as unknown as { gtag?: Gtag };
     const gtag = w.gtag;
