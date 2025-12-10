@@ -67,10 +67,18 @@ The `yarn build` command automatically generates static data from the recipes-md
 
 ## Deployment
 
-This repo uses GitHub Actions to build and deploy on pushes to `main`.
+This repo uses GitHub Actions to build and deploy automatically:
 
-- Workflow: `.github/workflows/webpack-deploy.yml`
-- The action runs `yarn build` and then deploys `dist/` to GitHub Pages using `gh-pages`.
+- **Build workflow**: `.github/workflows/build.yml` - Runs on pull requests to validate builds
+- **Deploy workflow**: `.github/workflows/deploy.yml` - Runs on pushes to `main` and deploys to GitHub Pages
+- The deploy action runs `yarn build` and then uploads the `dist/` folder to GitHub Pages using the official `actions/deploy-pages@v4` action
+
+The deployment process includes:
+
+1. Build validation (typecheck, lint, format check)
+2. Production build with static data generation
+3. Upload to GitHub Pages artifact storage
+4. Deploy to the live site
 
 You can also deploy locally (requires push access):
 
