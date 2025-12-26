@@ -3,6 +3,7 @@
  */
 import type { GenerationMeta, GhCompare, GhCompareFile, Recipe } from "./types";
 import { compareCommits, listImagesFor, fetchMarkdown } from "./github";
+import { markdownToHtml } from "./markdown";
 
 export type ChangedRecipeEntry = {
   filename: string;
@@ -87,6 +88,7 @@ export async function applyRecipeFileChanges(
       imageName: images[0] || null,
       imageNames: images,
       markdown,
+      html: markdown ? await markdownToHtml(markdown) : "",
     });
   }
 }
