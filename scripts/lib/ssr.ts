@@ -6,9 +6,21 @@ import { StaticRouter } from "react-router-dom/server";
 import { Routes, Route } from "react-router-dom";
 import { Recipes as RecipesLayout } from "../../src/layouts/recipes";
 import { Recipe as RecipeView } from "../../src/layouts/recipe";
+import type { RecipeData } from "../../src/types";
 import type { Recipe } from "./types";
 
 import { STATIC_DIR } from "./io";
+
+function toRecipeData(recipe: Recipe): RecipeData {
+  return {
+    name: recipe.name,
+    filename: recipe.filename,
+    imageName: recipe.imageName,
+    imageNames: recipe.imageNames,
+    markdown: recipe.markdown ?? "",
+    html: recipe.html ?? "",
+  };
+}
 
 function rewriteLocalLinksToStatic(html: string): string {
   // Rewrite app-relative links to point to /static/ paths for static hosting
@@ -67,7 +79,9 @@ export async function writeStatic(recipes: Recipe[]): Promise<void> {
       null,
       React.createElement(RouteCT, {
         path: "/",
-        element: React.createElement(RecipesLayout, null),
+        element: React.createElement(RecipesLayout, {
+          initialRecipes: recipes.map(toRecipeData),
+        }),
       }),
     ),
   );
@@ -92,7 +106,9 @@ export async function writeStatic(recipes: Recipe[]): Promise<void> {
         null,
         React.createElement(RouteCT, {
           path: "/:fileBasename",
-          element: React.createElement(RecipeView, null),
+          element: React.createElement(RecipeView, {
+            initialRecipe: toRecipeData(r),
+          }),
         }),
       ),
     );

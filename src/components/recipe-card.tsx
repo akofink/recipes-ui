@@ -5,24 +5,32 @@ import { RECIPESMD_RAW } from "../constants";
 import { GithubFile, RecipeData } from "../types";
 import { findRecipeByName } from "../services/recipes";
 
-export const RecipeCard: FC<GithubFile> = ({ name }) => {
-  const [recipe, setRecipe] = useState<RecipeData | null>(null);
+type RecipeCardProps = GithubFile & {
+  recipe?: RecipeData | null;
+};
+
+export const RecipeCard: FC<RecipeCardProps> = ({ name, recipe }) => {
+  const [loadedRecipe, setLoadedRecipe] = useState<RecipeData | null>(null);
 
   useEffect(() => {
+    if (recipe) {
+      setLoadedRecipe(recipe);
+      return;
+    }
     const loadRecipe = async () => {
       if (!name) return;
       try {
         const data = await findRecipeByName(name);
-        setRecipe(data);
+        setLoadedRecipe(data);
       } catch (err) {
         console.error("Error loading recipe for card:", err);
       }
     };
 
     loadRecipe();
-  }, [name]);
+  }, [name, recipe]);
 
-  const imageName = recipe?.imageName ?? null;
+  const imageName = (recipe ?? loadedRecipe)?.imageName ?? null;
   const imageSrc = useMemo(
     () =>
       imageName ? `${RECIPESMD_RAW}/images/${name}/${imageName}` : "/empty.svg",

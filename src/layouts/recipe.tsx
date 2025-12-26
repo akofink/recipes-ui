@@ -10,15 +10,25 @@ import { RecipeData } from "../types";
 export const EDIT_BASE_URL =
   "https://github.com/akofink/recipes-md/edit/main/recipes";
 
-export const Recipe = () => {
+type RecipeProps = {
+  initialRecipe?: RecipeData | null;
+};
+
+export const Recipe = ({ initialRecipe }: RecipeProps) => {
   const { fileBasename } = useParams();
   const name = fileBasename?.replace(/\/$/, "");
   const filename = `${name}.md`;
-  const [recipe, setRecipe] = useState<RecipeData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [recipe, setRecipe] = useState<RecipeData | null>(
+    initialRecipe ?? null,
+  );
+  const [loading, setLoading] = useState(!initialRecipe);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (initialRecipe && initialRecipe.filename === filename) {
+      setLoading(false);
+      return;
+    }
     const loadRecipe = async () => {
       try {
         setLoading(true);

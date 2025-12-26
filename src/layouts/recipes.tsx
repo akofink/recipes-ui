@@ -6,15 +6,23 @@ import { fetchRecipes } from "../services/recipes";
 import { RecipeData } from "../types";
 import Navigation from "./navigation";
 
-export const Recipes: FC = () => {
-  const [recipes, setRecipes] = useState<RecipeData[]>([]);
-  const [loading, setLoading] = useState(true);
+type RecipesProps = {
+  initialRecipes?: RecipeData[];
+};
+
+export const Recipes: FC<RecipesProps> = ({ initialRecipes }) => {
+  const [recipes, setRecipes] = useState<RecipeData[]>(initialRecipes ?? []);
+  const [loading, setLoading] = useState(!initialRecipes);
   const [error, setError] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") || "");
 
   // Load recipes on mount
   useEffect(() => {
+    if (initialRecipes) {
+      setLoading(false);
+      return;
+    }
     const loadRecipes = async () => {
       try {
         setLoading(true);
@@ -47,7 +55,8 @@ export const Recipes: FC = () => {
   }, [recipes, query]);
 
   const cards = useMemo(
-    () => filtered.map((r) => <RecipeCard key={r.name} name={r.name} />),
+    () =>
+      filtered.map((r) => <RecipeCard key={r.name} name={r.name} recipe={r} />),
     [filtered],
   );
 
