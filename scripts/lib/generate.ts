@@ -298,6 +298,11 @@ export async function run(): Promise<void> {
   const seedRecipes = Array.isArray(localRecipes) ? localRecipes : [];
 
   console.log("[generate-static-data] Attempting update using compare API...");
+  if (!useLocalBase) {
+    console.log(
+      `[generate-static-data] No valid local meta found; using initial base SHA ${INITIAL_BASE_SHA}.`,
+    );
+  }
   try {
     const updated = await incrementalUpdate(
       seedRecipes,
