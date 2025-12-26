@@ -2,8 +2,54 @@
  * Incremental update utilities: parse GitHub compare results and update local recipe data.
  */
 import type { GenerationMeta, GhCompare, GhCompareFile, Recipe } from "./types";
-import { compareCommits, listImagesFor, fetchMarkdown } from "./github";
+import {
+  compareCommits,
+  listImagesFor,
+  fetchMarkdown,
+  listRecipes,
+} from "./github";
 import { markdownToHtml } from "./markdown";
+
+/**
+ * Initial generation: full sync against the upstream recipes list.
+ */
+export async function generateFromScratch(): Promise<Recipe[]> {
+  console.log("[generate-static-data] Fetching recipe list (full)...");
+  const recipes = await listRecipes();
+  console.log(`[generate-static-data] Found ${recipes.length} recipes`);
+
+  const out: Recipe[] = [];
+  for (const { name, filename } of recipes) {
+    console.log(`[generate-static-data] Fetching ${filename}...`);
+    let images: string[] = [];
+    try {
+      images = await listImagesFor(name);
+    } catch (e) {
+      if (process.env.CI) {
+        const msg = e instanceof Error ? e.message : String(e);
+        throw new Error(
+          `[generate-static-data] Failed to list images for ${name} in CI: ${msg}`,
+        );
+      }
+      console.warn(
+        `[generate-static-data] Warning: failed to list images for ${name}:`,
+        e instanceof Error ? e.message : String(e),
+      );
+    }
+    const markdown = await fetchMarkdown(filename);
+    const html = await markdownToHtml(markdown);
+    out.push({
+      name,
+      filename,
+      imageName: images[0] || null,
+      imageNames: images,
+      markdown,
+      html,
+    });
+  }
+
+  return out;
+}
 
 export type ChangedRecipeEntry = {
   filename: string;

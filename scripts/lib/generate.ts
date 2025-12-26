@@ -15,9 +15,11 @@ import {
   listImagesFor,
   fetchMarkdown,
 } from "./github";
-import { fullGeneration } from "./build"; // full generation lives in build.ts
 import { markdownToHtml, withHtmlFromMarkdown } from "./markdown";
-import { incrementalUpdate as incrementalUpdateFromModule } from "./incremental";
+import {
+  generateFromScratch,
+  incrementalUpdate as incrementalUpdateFromModule,
+} from "./incremental";
 // Lazy import to avoid circular dependency issues
 import type { GenerationMeta, GhCompare, GhCompareFile, Recipe } from "./types";
 
@@ -216,7 +218,7 @@ export async function incrementalUpdate_DEPRECATED(
 }
 
 /**
- * Main orchestration: decide whether to skip, do incremental update, or full generation,
+ * Main orchestration: decide whether to skip, do incremental update, or initial generation,
  * then write recipes.json, meta.json, and static HTML.
  */
 export async function run(): Promise<void> {
@@ -284,14 +286,14 @@ export async function run(): Promise<void> {
         );
       }
       console.warn(
-        "[generate-static-data] Incremental update failed; falling back to full generation:",
+        "[generate-static-data] Incremental update failed; falling back to initial generation:",
         e instanceof Error ? e.message : String(e),
       );
     }
   }
 
-  // Full generation
-  const out = await fullGeneration(); // from scripts/lib/build
+  // Initial generation (full sync via incremental module)
+  const out = await generateFromScratch();
   await writeRecipes(out);
   const { writeStatic } = await import("./ssr");
   await writeStatic(out);
