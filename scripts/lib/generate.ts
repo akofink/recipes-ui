@@ -16,12 +16,21 @@ import {
   fetchMarkdown,
 } from "./github";
 import { markdownToHtml, withHtmlFromMarkdown } from "./markdown";
-import {
-  generateFromScratch,
-  incrementalUpdate as incrementalUpdateFromModule,
-} from "./incremental";
 // Lazy import to avoid circular dependency issues
 import type { GenerationMeta, GhCompare, GhCompareFile, Recipe } from "./types";
+
+const INITIAL_BASE_SHA = "c9928c5c993d30c8c77b17966505c05a2242df6c";
+
+type ChangedRecipeEntry = {
+  filename: string;
+  status?: GhCompareFile["status"];
+  previous?: string;
+};
+
+type DiffResult = {
+  changedRecipeFiles: Set<ChangedRecipeEntry>;
+  changedImageRecipeNames: Set<string>;
+};
 
 /**
  * Query upstream commit SHAs for the recipes/ and images/ paths (or branch head).
@@ -105,30 +114,21 @@ export async function writeMetaNow(
 }
 
 /**
- * Apply upstream changes to a local Recipe[] using GitHub compare results.
- * Returns a new, sorted Recipe[] or null if no changes affect recipes/images.
+ * Parse compare results into changed recipe files and changed image recipe names.
  */
-export async function incrementalUpdate_DEPRECATED(
-  localRecipes: Recipe[],
-  localMeta: GenerationMeta,
+export async function diffChanges(
+  baseRecipesSha: string,
+  baseImagesSha: string,
   recipesSha: string,
   imagesSha: string,
-): Promise<Recipe[] | null> {
+): Promise<DiffResult> {
   const [recipesCmp, imagesCmp]: [GhCompare | null, GhCompare | null] =
     await Promise.all([
-      localMeta.source?.recipesSha
-        ? compareCommits(localMeta.source.recipesSha, recipesSha)
-        : Promise.resolve(null),
-      localMeta.source?.imagesSha
-        ? compareCommits(localMeta.source.imagesSha, imagesSha)
-        : Promise.resolve(null),
+      compareCommits(baseRecipesSha, recipesSha),
+      compareCommits(baseImagesSha, imagesSha),
     ]);
 
-  const changedRecipeFiles: Set<{
-    filename: string;
-    status?: GhCompareFile["status"];
-    previous?: string;
-  }> = new Set(
+  const changedRecipeFiles: Set<ChangedRecipeEntry> = new Set(
     (recipesCmp?.files || [])
       .filter(
         (f) =>
@@ -149,16 +149,16 @@ export async function incrementalUpdate_DEPRECATED(
       .filter((x): x is string => Boolean(x)),
   );
 
-  if (changedRecipeFiles.size === 0 && changedImageRecipeNames.size === 0) {
-    return null; // nothing to do
-  }
+  return { changedRecipeFiles, changedImageRecipeNames };
+}
 
-  // Build map of existing entries
-  const map = new Map<string, Recipe>(
-    localRecipes.map((r) => [r.filename, { ...r }]),
-  );
-
-  // Apply recipe file changes
+/**
+ * Apply recipe file additions/modifications/removals to the working map.
+ */
+export async function applyRecipeFileChanges(
+  map: Map<string, Recipe>,
+  changedRecipeFiles: Set<ChangedRecipeEntry>,
+): Promise<void> {
   for (const entry of Array.from(changedRecipeFiles)) {
     const { filename, status, previous } = entry;
     const name = filename.replace(/\.md$/, "");
@@ -182,10 +182,19 @@ export async function incrementalUpdate_DEPRECATED(
       imageName: images[0] || null,
       imageNames: images,
       markdown,
+      html: markdown ? await markdownToHtml(markdown) : "",
     });
   }
+}
 
-  // Refresh images for impacted recipes (including ones changed above)
+/**
+ * Refresh image lists for recipes whose images may have changed.
+ */
+export async function refreshImpactedImages(
+  map: Map<string, Recipe>,
+  changedImageRecipeNames: Set<string>,
+  changedRecipeFiles: Set<ChangedRecipeEntry>,
+): Promise<void> {
   const toRefreshImages = new Set<string>();
   changedImageRecipeNames.forEach((n) => toRefreshImages.add(n));
   Array.from(changedRecipeFiles).forEach((e) =>
@@ -204,22 +213,47 @@ export async function incrementalUpdate_DEPRECATED(
       // ignore image listing errors for incremental update
     }
   }
+}
+
+/**
+ * Compose the incremental update from diff + apply + refresh.
+ * Returns new Recipe[] or null when no relevant changes.
+ */
+export async function incrementalUpdate(
+  localRecipes: Recipe[],
+  baseRecipesSha: string,
+  baseImagesSha: string,
+  recipesSha: string,
+  imagesSha: string,
+): Promise<Recipe[] | null> {
+  const { changedRecipeFiles, changedImageRecipeNames } = await diffChanges(
+    baseRecipesSha,
+    baseImagesSha,
+    recipesSha,
+    imagesSha,
+  );
+
+  if (changedRecipeFiles.size === 0 && changedImageRecipeNames.size === 0) {
+    return null;
+  }
+
+  const map = new Map<string, Recipe>(
+    localRecipes.map((r) => [r.filename, { ...r }]),
+  );
+  await applyRecipeFileChanges(map, changedRecipeFiles);
+  await refreshImpactedImages(map, changedImageRecipeNames, changedRecipeFiles);
 
   const out: Recipe[] = [];
   for (const r of Array.from(map.values())) {
-    out.push({
-      ...r,
-      html: r.markdown ? await markdownToHtml(r.markdown) : "",
-    });
+    out.push({ ...r });
   }
   out.sort((a, b) => a.name.localeCompare(b.name));
-
   return out;
 }
 
 /**
- * Main orchestration: decide whether to skip, do incremental update, or initial generation,
- * then write recipes.json, meta.json, and static HTML.
+ * Main orchestration: decide whether to skip or update, then write recipes.json,
+ * meta.json, and static HTML.
  */
 export async function run(): Promise<void> {
   const { recipesSha, imagesSha, offlineDone } = await getUpstreamShas();
@@ -243,60 +277,57 @@ export async function run(): Promise<void> {
     return;
   }
 
-  if (
-    outFileExists &&
-    Array.isArray(localRecipes) &&
-    localRecipes.length > 0 &&
-    localMeta &&
-    localMeta.schemaVersion === SCHEMA_VERSION &&
-    recipesSha &&
-    imagesSha
-  ) {
-    console.log(
-      "[generate-static-data] Attempting incremental update using compare API...",
+  if (!recipesSha || !imagesSha) {
+    throw new Error(
+      "[generate-static-data] Unable to resolve upstream SHAs for generation.",
     );
-    try {
-      const updated = await incrementalUpdateFromModule(
-        localRecipes,
-        localMeta,
-        recipesSha,
-        imagesSha,
-      );
-      if (updated) {
-        await writeRecipes(updated);
-        const { writeStatic } = await import("./ssr");
-        await writeStatic(updated);
-        await writeMetaNow(recipesSha, imagesSha, updated.length);
-        console.log(
-          `[generate-static-data] Incremental update complete. Wrote ${OUT_FILE} and ${META_FILE}`,
-        );
-        return;
-      } else {
-        console.log(
-          "[generate-static-data] No relevant changes detected via compare. Skipping.",
-        );
-        await writeMetaNow(recipesSha, imagesSha, localRecipes.length);
-        return;
-      }
-    } catch (e: unknown) {
-      if (process.env.CI) {
-        const msg = e instanceof Error ? e.message : String(e);
-        throw new Error(
-          `[generate-static-data] Incremental update failed in CI: ${msg}`,
-        );
-      }
-      console.warn(
-        "[generate-static-data] Incremental update failed; falling back to initial generation:",
-        e instanceof Error ? e.message : String(e),
-      );
-    }
   }
 
-  // Initial generation (full sync via incremental module)
-  const out = await generateFromScratch();
-  await writeRecipes(out);
-  const { writeStatic } = await import("./ssr");
-  await writeStatic(out);
-  await writeMetaNow(recipesSha, imagesSha, out.length);
-  console.log(`[generate-static-data] Wrote ${OUT_FILE} and ${META_FILE}`);
+  const useLocalBase =
+    !!localMeta &&
+    localMeta.schemaVersion === SCHEMA_VERSION &&
+    localMeta.source?.branch === BRANCH &&
+    !!localMeta.source?.recipesSha &&
+    !!localMeta.source?.imagesSha;
+  const baseRecipesSha = useLocalBase
+    ? (localMeta.source?.recipesSha as string)
+    : INITIAL_BASE_SHA;
+  const baseImagesSha = useLocalBase
+    ? (localMeta.source?.imagesSha as string)
+    : INITIAL_BASE_SHA;
+  const seedRecipes = Array.isArray(localRecipes) ? localRecipes : [];
+
+  console.log("[generate-static-data] Attempting update using compare API...");
+  try {
+    const updated = await incrementalUpdate(
+      seedRecipes,
+      baseRecipesSha,
+      baseImagesSha,
+      recipesSha,
+      imagesSha,
+    );
+    if (updated) {
+      await writeRecipes(updated);
+      const { writeStatic } = await import("./ssr");
+      await writeStatic(updated);
+      await writeMetaNow(recipesSha, imagesSha, updated.length);
+      console.log(
+        `[generate-static-data] Update complete. Wrote ${OUT_FILE} and ${META_FILE}`,
+      );
+      return;
+    }
+    console.log(
+      "[generate-static-data] No relevant changes detected via compare. Skipping.",
+    );
+    if (outFileExists) {
+      await writeMetaNow(recipesSha, imagesSha, seedRecipes.length);
+    }
+    return;
+  } catch (e: unknown) {
+    if (process.env.CI) {
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new Error(`[generate-static-data] Update failed in CI: ${msg}`);
+    }
+    throw e;
+  }
 }
