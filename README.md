@@ -49,7 +49,7 @@ A React + TypeScript single-page app built with Webpack and deployed to GitHub P
 
 - `yarn start` – Run webpack-dev-server with hot reload
 - `yarn watch` – Rebuild on file changes (without dev server)
-- `yarn generate` – Generate static data from recipes-md repository (creates `src/generated/recipes.json`)
+- `yarn generate` – Generate static data from recipes-md repository (creates `src/generated/recipes.json` and `src/generated/meta.json`)
 - `yarn build` – Create a production build in `dist/` (automatically runs `yarn generate` first)
 - `yarn clean` – Remove generated files and build output (`src/generated/` and `dist/`)
 - `yarn check` – Run typecheck, lint, and format check (used in CI)
@@ -93,7 +93,7 @@ yarn deploy
 
 - Routing uses `react-router-dom` (v6). The dev server is configured with `historyApiFallback` so deep links work locally.
 - `webpack.config.ts` reads `HOST` and `PORT` from the environment if set.
-- Static data generation and prerender: At build time, a script fetches recipe metadata and markdown from the recipes-md repo and writes `src/generated/recipes.json`. Then, the script uses React SSR (react-dom/server + StaticRouter) to prerender the real app UI to static HTML under `src/generated/static/` (copied to `dist/static/`). The `/static` site is explicitly for no-JavaScript browsers to degrade gracefully, while the SPA continues to work normally.
+- Static data generation and prerender: At build time, a script fetches recipe metadata and markdown from the recipes-md repo and writes `src/generated/recipes.json` plus `src/generated/meta.json` (tracked upstream SHAs used for incremental builds). Then, the script uses React SSR (react-dom/server + StaticRouter) to prerender the real app UI to static HTML under `src/generated/static/` (copied to `dist/static/`). The `/static` site is explicitly for no-JavaScript browsers to degrade gracefully, while the SPA continues to work normally.
   - Optional token: To avoid rate limits during generation, set `GITHUB_TOKEN` (or `GH_TOKEN` / `RECIPES_GITHUB_TOKEN`) in your environment.
   - Incremental: The generator checks latest upstream commit SHAs for `recipes/` and `images/` paths and skips regeneration when unchanged (but still refreshes prerendered HTML from local data).
 
