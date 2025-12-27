@@ -1,13 +1,6 @@
 import { FC, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import {
-  Alert,
-  Container,
-  Form,
-  Pagination,
-  Row,
-  Spinner,
-} from "react-bootstrap";
+import { Alert, Container, Form, Row, Spinner } from "react-bootstrap";
 import RecipeCard from "../components/recipe-card";
 import { fetchRecipes } from "../services/recipes";
 import { RecipeData } from "../types";
@@ -205,39 +198,63 @@ export const Recipes: FC<RecipesProps> = ({
           {cards}
         </Row>
         {totalPages > 1 && (
-          <Pagination className="justify-content-center mt-3">
-            <Pagination.First
-              disabled={page === 1}
+          <div className="d-flex flex-wrap justify-content-center gap-2 mt-3 small">
+            <button
+              type="button"
+              className="btn btn-link btn-sm p-0 text-decoration-none text-muted"
               onClick={() => updateParams({ page: 1 })}
-            />
-            <Pagination.Prev
               disabled={page === 1}
+            >
+              First
+            </button>
+            <button
+              type="button"
+              className="btn btn-link btn-sm p-0 text-decoration-none text-muted"
               onClick={() => updateParams({ page: page - 1 })}
-            />
+              disabled={page === 1}
+            >
+              Prev
+            </button>
             {pages.map((pageNumber, idx) => {
               const prev = pages[idx - 1];
               const needsEllipsis = prev && pageNumber - prev > 1;
               return (
-                <span key={`page-${pageNumber}`}>
-                  {needsEllipsis && <Pagination.Ellipsis disabled />}
-                  <Pagination.Item
-                    active={pageNumber === page}
+                <span
+                  key={`page-${pageNumber}`}
+                  className="d-inline-flex gap-2"
+                >
+                  {needsEllipsis && <span className="text-muted">…</span>}
+                  <button
+                    type="button"
+                    className={`btn btn-link btn-sm p-0 text-decoration-none ${
+                      pageNumber === page
+                        ? "text-body fw-semibold"
+                        : "text-muted"
+                    }`}
                     onClick={() => updateParams({ page: pageNumber })}
                   >
                     {pageNumber}
-                  </Pagination.Item>
+                  </button>
                 </span>
               );
             })}
-            <Pagination.Next
-              disabled={page === totalPages}
+            <button
+              type="button"
+              className="btn btn-link btn-sm p-0 text-decoration-none text-muted"
               onClick={() => updateParams({ page: page + 1 })}
-            />
-            <Pagination.Last
               disabled={page === totalPages}
+            >
+              Next
+            </button>
+            <button
+              type="button"
+              className="btn btn-link btn-sm p-0 text-decoration-none text-muted"
               onClick={() => updateParams({ page: totalPages })}
-            />
-          </Pagination>
+              disabled={page === totalPages}
+            >
+              Last
+            </button>
+          </div>
         )}
       </Container>
     </Navigation>
