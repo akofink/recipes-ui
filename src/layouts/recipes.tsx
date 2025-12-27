@@ -182,15 +182,15 @@ export const Recipes: FC<RecipesProps> = ({
                 }}
               />
             </Form.Group>
-            <Form.Group className="col-12 col-md-4">
-              <Form.Label>Page size</Form.Label>
-              <div className="d-flex gap-2 flex-wrap">
+            <Form.Group className="col-12 col-md-4 text-md-end">
+              <Form.Label className="w-100">Page size</Form.Label>
+              <div className="d-inline-flex gap-2 flex-wrap">
                 {pageSizes.map((size) => (
                   <button
                     key={size}
                     type="button"
-                    className={`btn btn-sm ${
-                      pageSize === size ? "btn-primary" : "btn-outline-primary"
+                    className={`btn btn-link btn-sm p-0 text-decoration-none ${
+                      pageSize === size ? "text-body fw-semibold" : "text-muted"
                     }`}
                     onClick={() => updateParams({ size, page: 1 })}
                   >
