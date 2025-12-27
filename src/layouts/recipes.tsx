@@ -164,7 +164,6 @@ export const Recipes: FC<RecipesProps> = ({
         <Form className="mb-3">
           <Row className="g-2 align-items-end">
             <Form.Group className="col-12 col-md-8">
-              <Form.Label>Search</Form.Label>
               <Form.Control
                 type="search"
                 placeholder="Search recipes..."
