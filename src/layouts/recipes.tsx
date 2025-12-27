@@ -183,8 +183,7 @@ export const Recipes: FC<RecipesProps> = ({
               />
             </Form.Group>
             <Form.Group className="col-12 col-md-4 text-md-end">
-              <Form.Label className="w-100">Page size</Form.Label>
-              <div className="d-inline-flex gap-2 flex-wrap">
+              <div className="d-inline-flex gap-2 flex-wrap align-items-center">
                 {pageSizes.map((size) => (
                   <button
                     key={size}
@@ -197,6 +196,7 @@ export const Recipes: FC<RecipesProps> = ({
                     {size}
                   </button>
                 ))}
+                <span className="small text-muted">per page</span>
               </div>
             </Form.Group>
           </Row>
