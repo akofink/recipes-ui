@@ -127,13 +127,7 @@ export const Recipes: FC<RecipesProps> = ({
     setSearchParams(next);
   };
 
-  const pageSizes = useMemo(() => {
-    const options = [10, 20, 50, 100];
-    if (!options.includes(pageSize)) {
-      options.push(pageSize);
-    }
-    return options.sort((a, b) => a - b);
-  }, [pageSize]);
+  const pageSizes = [10, 20, 50];
 
   const pages = useMemo(() => {
     if (totalPages <= 7) {
@@ -190,20 +184,20 @@ export const Recipes: FC<RecipesProps> = ({
             </Form.Group>
             <Form.Group className="col-12 col-md-4">
               <Form.Label>Page size</Form.Label>
-              <Form.Select
-                aria-label="Select page size"
-                value={pageSize}
-                onChange={(e) => {
-                  const nextSize = Number.parseInt(e.currentTarget.value, 10);
-                  updateParams({ size: nextSize, page: 1 });
-                }}
-              >
+              <div className="d-flex gap-2 flex-wrap">
                 {pageSizes.map((size) => (
-                  <option key={size} value={size}>
+                  <button
+                    key={size}
+                    type="button"
+                    className={`btn btn-sm ${
+                      pageSize === size ? "btn-primary" : "btn-outline-primary"
+                    }`}
+                    onClick={() => updateParams({ size, page: 1 })}
+                  >
                     {size}
-                  </option>
+                  </button>
                 ))}
-              </Form.Select>
+              </div>
             </Form.Group>
           </Row>
         </Form>
