@@ -1,21 +1,41 @@
 import { FC, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Container, Row, Form, Spinner, Alert } from "react-bootstrap";
+import {
+  Alert,
+  Container,
+  Form,
+  Pagination,
+  Row,
+  Spinner,
+} from "react-bootstrap";
 import RecipeCard from "../components/recipe-card";
 import { fetchRecipes } from "../services/recipes";
 import { RecipeData } from "../types";
 import Navigation from "./navigation";
+import { DEFAULT_PAGE_SIZE } from "../constants";
 
 type RecipesProps = {
   initialRecipes?: RecipeData[];
+  initialPageSize?: number;
 };
 
-export const Recipes: FC<RecipesProps> = ({ initialRecipes }) => {
+const parsePositiveInt = (value: string | null): number | null => {
+  if (!value) return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
+const clamp = (value: number, min: number, max: number): number =>
+  Math.min(Math.max(value, min), max);
+
+export const Recipes: FC<RecipesProps> = ({
+  initialRecipes,
+  initialPageSize,
+}) => {
   const [recipes, setRecipes] = useState<RecipeData[]>(initialRecipes ?? []);
   const [loading, setLoading] = useState(!initialRecipes);
   const [error, setError] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [query, setQuery] = useState(searchParams.get("q") || "");
 
   // Load recipes on mount
   useEffect(() => {
@@ -38,15 +58,10 @@ export const Recipes: FC<RecipesProps> = ({ initialRecipes }) => {
     };
 
     loadRecipes();
-  }, []);
+  }, [initialRecipes]);
 
-  // Keep local state in sync with URL (back/forward navigation)
-  useEffect(() => {
-    const qParam = searchParams.get("q") || "";
-    if (qParam !== query) {
-      setQuery(qParam);
-    }
-  }, [searchParams, query]);
+  const query = searchParams.get("q") || "";
+  const defaultPageSize = initialPageSize ?? DEFAULT_PAGE_SIZE;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -54,11 +69,81 @@ export const Recipes: FC<RecipesProps> = ({ initialRecipes }) => {
     return recipes.filter((r) => r.name.toLowerCase().includes(q));
   }, [recipes, query]);
 
+  const totalPages = useMemo(() => {
+    const rawSize = parsePositiveInt(searchParams.get("size"));
+    const pageSize = rawSize ?? defaultPageSize;
+    return Math.max(1, Math.ceil(filtered.length / pageSize));
+  }, [filtered.length, searchParams, defaultPageSize]);
+
+  const pageSize = useMemo(() => {
+    const rawSize = parsePositiveInt(searchParams.get("size"));
+    return rawSize ?? defaultPageSize;
+  }, [searchParams, defaultPageSize]);
+
+  const page = useMemo(() => {
+    const rawPage = parsePositiveInt(searchParams.get("page"));
+    const safePage = rawPage ?? 1;
+    return clamp(safePage, 1, totalPages);
+  }, [searchParams, totalPages]);
+
+  const paged = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
+
   const cards = useMemo(
     () =>
-      filtered.map((r) => <RecipeCard key={r.name} name={r.name} recipe={r} />),
-    [filtered],
+      paged.map((r) => <RecipeCard key={r.name} name={r.name} recipe={r} />),
+    [paged],
   );
+
+  const updateParams = (updates: {
+    q?: string;
+    page?: number;
+    size?: number;
+  }) => {
+    const next = new URLSearchParams(searchParams);
+    if (updates.q !== undefined) {
+      if (updates.q.trim()) {
+        next.set("q", updates.q);
+      } else {
+        next.delete("q");
+      }
+    }
+    if (updates.size !== undefined) {
+      if (updates.size !== defaultPageSize) {
+        next.set("size", String(updates.size));
+      } else {
+        next.delete("size");
+      }
+    }
+    if (updates.page !== undefined) {
+      if (updates.page !== 1) {
+        next.set("page", String(updates.page));
+      } else {
+        next.delete("page");
+      }
+    }
+    setSearchParams(next);
+  };
+
+  const pageSizes = useMemo(() => {
+    const options = [10, 20, 50, 100];
+    if (!options.includes(pageSize)) {
+      options.push(pageSize);
+    }
+    return options.sort((a, b) => a - b);
+  }, [pageSize]);
+
+  const pages = useMemo(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const numbers = new Set<number>([1, totalPages, page]);
+    if (page - 1 > 1) numbers.add(page - 1);
+    if (page + 1 < totalPages) numbers.add(page + 1);
+    return Array.from(numbers).sort((a, b) => a - b);
+  }, [page, totalPages]);
 
   if (loading) {
     return (
@@ -90,26 +175,76 @@ export const Recipes: FC<RecipesProps> = ({ initialRecipes }) => {
     <Navigation>
       <Container>
         <Form className="mb-3">
-          <Form.Control
-            type="search"
-            placeholder="Search recipes..."
-            value={query}
-            onChange={(e) => {
-              const v = e.currentTarget.value;
-              setQuery(v);
-              const next = new URLSearchParams(searchParams);
-              if (v.trim()) {
-                next.set("q", v);
-              } else {
-                next.delete("q");
-              }
-              setSearchParams(next, { replace: true });
-            }}
-          />
+          <Row className="g-2 align-items-end">
+            <Form.Group className="col-12 col-md-8">
+              <Form.Label>Search</Form.Label>
+              <Form.Control
+                type="search"
+                placeholder="Search recipes..."
+                value={query}
+                onChange={(e) => {
+                  const v = e.currentTarget.value;
+                  updateParams({ q: v, page: 1 });
+                }}
+              />
+            </Form.Group>
+            <Form.Group className="col-12 col-md-4">
+              <Form.Label>Page size</Form.Label>
+              <Form.Select
+                aria-label="Select page size"
+                value={pageSize}
+                onChange={(e) => {
+                  const nextSize = Number.parseInt(e.currentTarget.value, 10);
+                  updateParams({ size: nextSize, page: 1 });
+                }}
+              >
+                {pageSizes.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+          </Row>
         </Form>
         <Row xs={2} sm={3} md={4} lg={5}>
           {cards}
         </Row>
+        {totalPages > 1 && (
+          <Pagination className="justify-content-center mt-3">
+            <Pagination.First
+              disabled={page === 1}
+              onClick={() => updateParams({ page: 1 })}
+            />
+            <Pagination.Prev
+              disabled={page === 1}
+              onClick={() => updateParams({ page: page - 1 })}
+            />
+            {pages.map((pageNumber, idx) => {
+              const prev = pages[idx - 1];
+              const needsEllipsis = prev && pageNumber - prev > 1;
+              return (
+                <span key={`page-${pageNumber}`}>
+                  {needsEllipsis && <Pagination.Ellipsis disabled />}
+                  <Pagination.Item
+                    active={pageNumber === page}
+                    onClick={() => updateParams({ page: pageNumber })}
+                  >
+                    {pageNumber}
+                  </Pagination.Item>
+                </span>
+              );
+            })}
+            <Pagination.Next
+              disabled={page === totalPages}
+              onClick={() => updateParams({ page: page + 1 })}
+            />
+            <Pagination.Last
+              disabled={page === totalPages}
+              onClick={() => updateParams({ page: totalPages })}
+            />
+          </Pagination>
+        )}
       </Container>
     </Navigation>
   );

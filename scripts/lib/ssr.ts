@@ -81,6 +81,7 @@ export async function writeStatic(recipes: Recipe[]): Promise<void> {
         path: "/",
         element: React.createElement(RecipesLayout, {
           initialRecipes: recipes.map(toRecipeData),
+          initialPageSize: recipes.length,
         }),
       }),
     ),
