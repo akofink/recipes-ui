@@ -30,7 +30,7 @@ jobs:
       - name: Install
         run: yarn --frozen-lockfile
       - name: Validate (typecheck, lint, format)
-        run: yarn check
+        run: yarn run check
       - name: Build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
