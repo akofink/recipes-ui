@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
-          cache: "yarn"
+          cache: "npm"
       - name: Cache generated recipes data
         uses: actions/cache@v4
         with:
@@ -28,10 +28,14 @@ jobs:
             ${{ runner.os }}-build-
             ${{ runner.os }}-
       - name: Install
-        run: yarn --frozen-lockfile
+        run: npm ci
+      - name: Audit production dependencies
+        run: npm run audit
       - name: Validate (typecheck, lint, format)
-        run: yarn run check
+        run: npm run check
+      - name: Test
+        run: npm test
       - name: Build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: yarn build
+        run: npm run build

@@ -12,10 +12,10 @@
 
 ## Key commands
 
-- Prefer an nvm-based npm setup: run `nvm use` first if Node/npm/Yarn are not already functional.
-- `yarn generate` to build recipe data (writes `src/generated/recipes.json`).
-- `yarn build` runs `yarn generate` and emits production assets to `dist/`.
-- `yarn start` runs webpack-dev-server at http://localhost:3000.
+- Prefer an nvm-based npm setup: run `nvm use` first if Node/npm are not already functional.
+- `npm run generate` to build recipe data (writes `src/generated/recipes.json`).
+- `npm run build` runs generation and emits production assets to `dist/`.
+- `npm run start` runs webpack-dev-server at http://localhost:3000.
 
 ## Configuration and routing
 
