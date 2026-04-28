@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import ReactDOM from "react-dom";
+import { createRoot } from "react-dom/client";
 // Include Bootstrap CSS from node_modules to avoid compiling SCSS
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./index.css";
@@ -9,10 +9,10 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import routes from "./routes";
 
 const router = createBrowserRouter(routes);
+const root = createRoot(document.getElementById("root") as HTMLElement);
 
-ReactDOM.render(
+root.render(
   <StrictMode>
     <RouterProvider router={router} />
   </StrictMode>,
-  document.getElementById("root"),
 );

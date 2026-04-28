@@ -1,4 +1,4 @@
-import { FC, useEffect } from "react";
+import { FC, PropsWithChildren, useEffect } from "react";
 import { Nav, Navbar } from "react-bootstrap";
 import { Link, useLocation } from "react-router-dom";
 
@@ -32,7 +32,7 @@ Total time: 30 minutes
 
 export const ADD_RECIPE_URL = `https://github.com/akofink/recipes-md/new/main/recipes?filename=new_recipe.md&value=${encodeURIComponent(NEW_RECIPE_TEMPLATE)}`;
 
-export const Navigation: FC = ({ children }) => {
+export const Navigation: FC<PropsWithChildren> = ({ children }) => {
   const location = useLocation();
   useEffect(() => {
     const GA_ID = "G-0WWZ7MSYKW";

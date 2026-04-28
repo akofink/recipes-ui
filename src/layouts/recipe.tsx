@@ -44,7 +44,7 @@ export const Recipe = ({ initialRecipe }: RecipeProps) => {
     };
 
     loadRecipe();
-  }, [filename]);
+  }, [filename, initialRecipe]);
 
   const html = recipe?.html || "";
   const imageNames: string[] = (recipe?.imageNames || []) as string[];
