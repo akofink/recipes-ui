@@ -69,7 +69,12 @@ export const Navigation: FC<PropsWithChildren> = ({ children }) => {
           </Navbar.Brand>
         </Link>
         <Navbar.Collapse className="justify-content-end">
-          <Nav.Link href={ADD_RECIPE_URL} target="_blank">
+          <Nav.Link
+            href={ADD_RECIPE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="add-recipe-link"
+          >
             Add a recipe
           </Nav.Link>
         </Navbar.Collapse>

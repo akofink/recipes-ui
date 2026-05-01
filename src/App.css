@@ -16,6 +16,10 @@
   padding: 0 1rem 0 1rem;
 }
 
+.add-recipe-link {
+  margin-right: 1rem;
+}
+
 .app-container-div {
   height: 100%;
   border-width: 0;
