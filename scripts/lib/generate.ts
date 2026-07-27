@@ -21,6 +21,7 @@ import { markdownToHtml, withHtmlFromMarkdown } from "./markdown";
 import type { GenerationMeta, GhCompare, GhCompareFile, Recipe } from "./types";
 
 const INITIAL_BASE_SHA = "c9928c5c993d30c8c77b17966505c05a2242df6c";
+const MAX_COMPARE_FILES = 300;
 
 type ChangedRecipeEntry = {
   filename: string;
@@ -129,7 +130,12 @@ export async function diffChanges(
       compareCommits(baseImagesSha, imagesSha),
     ]);
 
-  if (!Array.isArray(recipesCmp?.files) || !Array.isArray(imagesCmp?.files)) {
+  if (
+    !Array.isArray(recipesCmp?.files) ||
+    !Array.isArray(imagesCmp?.files) ||
+    recipesCmp.files.length >= MAX_COMPARE_FILES ||
+    imagesCmp.files.length >= MAX_COMPARE_FILES
+  ) {
     throw new Error("Compare response did not include a complete file list.");
   }
 

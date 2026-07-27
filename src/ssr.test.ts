@@ -44,9 +44,22 @@ test("replaces static output so deleted and renamed recipes do not remain", asyn
       "utf8",
     ),
   ).resolves.toContain("new-name");
+  await expect(
+    Promise.all([
+      fs.promises.readFile(path.join(mockStaticDir, "index.html"), "utf8"),
+      fs.promises.readFile(
+        path.join(mockStaticDir, "bootstrap.min.css"),
+        "utf8",
+      ),
+    ]),
+  ).resolves.toEqual([
+    expect.stringContaining("/static/bootstrap.min.css"),
+    expect.stringMatching(/.+/),
+  ]);
 });
 
 test("keeps existing output when rendering fails", async () => {
+  jest.spyOn(console, "error").mockImplementation(() => undefined);
   await writeStatic([recipe("existing")]);
   const invalidRecipe = recipe("invalid");
   invalidRecipe.name = Symbol("invalid") as unknown as string;

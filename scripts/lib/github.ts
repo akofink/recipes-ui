@@ -123,7 +123,11 @@ export async function listRecipes(): Promise<
 > {
   const url = `${CONTENTS_BASE}/recipes`;
   const items: GhContentItem[] | null = await fetchJson<GhContentItem[]>(url);
-  if (!Array.isArray(items)) return [];
+  if (!Array.isArray(items)) {
+    throw new Error(
+      `Unable to list upstream recipes: ${JSON.stringify(items)}`,
+    );
+  }
   return items
     .filter(
       (it) => it && typeof it.name === "string" && it.name.endsWith(".md"),

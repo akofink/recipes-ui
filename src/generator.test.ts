@@ -34,6 +34,20 @@ test("rejects compare responses without file lists", async () => {
   );
 });
 
+test("rejects compare responses at GitHub's file truncation limit", async () => {
+  mockedCompareCommits
+    .mockResolvedValueOnce({
+      files: Array.from({ length: 300 }, (_, index) => ({
+        filename: `recipes/recipe-${index}.md`,
+      })),
+    })
+    .mockResolvedValueOnce({ files: [] });
+
+  await expect(diffChanges("old", "old", "new", "new")).rejects.toThrow(
+    "complete file list",
+  );
+});
+
 test("full generation uses only recipes in the upstream directory", async () => {
   mockedListRecipes.mockResolvedValue([
     { filename: "renamed.md", name: "renamed" },
