@@ -12,6 +12,7 @@ import {
   latestCommitShaForPath,
   branchHeadSha,
   compareCommits,
+  listRecipes,
   listImagesFor,
   fetchMarkdown,
 } from "./github";
@@ -128,6 +129,10 @@ export async function diffChanges(
       compareCommits(baseImagesSha, imagesSha),
     ]);
 
+  if (!Array.isArray(recipesCmp?.files) || !Array.isArray(imagesCmp?.files)) {
+    throw new Error("Compare response did not include a complete file list.");
+  }
+
   const changedRecipeFiles: Set<ChangedRecipeEntry> = new Set(
     (recipesCmp?.files || [])
       .filter(
@@ -150,6 +155,29 @@ export async function diffChanges(
   );
 
   return { changedRecipeFiles, changedImageRecipeNames };
+}
+
+/** Build the complete recipe set from the authoritative upstream directory. */
+export async function fullGeneration(): Promise<Recipe[]> {
+  const upstreamRecipes = await listRecipes();
+  const recipes: Recipe[] = [];
+
+  for (const { filename, name } of upstreamRecipes) {
+    const [markdown, images] = await Promise.all([
+      fetchMarkdown(filename),
+      listImagesFor(name),
+    ]);
+    recipes.push({
+      name,
+      filename,
+      imageName: images[0] || null,
+      imageNames: images,
+      markdown,
+      html: markdown ? await markdownToHtml(markdown) : "",
+    });
+  }
+
+  return recipes.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
@@ -265,15 +293,8 @@ export async function run(): Promise<void> {
 
   if (outFileExists && isUpToDate(localMeta, recipesSha, imagesSha)) {
     console.log("[generate-static-data] Up to date. Skipping generation.");
-    try {
-      const { writeStatic } = await import("./ssr");
-      await writeStatic(await withHtmlFromMarkdown(localRecipes || []));
-    } catch (e: unknown) {
-      console.warn(
-        "[generate-static-data] Writing static pages from local data failed:",
-        e instanceof Error ? e.message : String(e),
-      );
-    }
+    const { writeStatic } = await import("./ssr");
+    await writeStatic(await withHtmlFromMarkdown(localRecipes || []));
     return;
   }
 
@@ -328,11 +349,28 @@ export async function run(): Promise<void> {
       await writeMetaNow(recipesSha, imagesSha, seedRecipes.length);
     }
     return;
-  } catch (e: unknown) {
-    if (process.env.CI) {
-      const msg = e instanceof Error ? e.message : String(e);
-      throw new Error(`[generate-static-data] Update failed in CI: ${msg}`);
+  } catch (compareError: unknown) {
+    console.warn(
+      "[generate-static-data] Incremental update failed; rebuilding from the upstream recipe list:",
+      compareError instanceof Error
+        ? compareError.message
+        : String(compareError),
+    );
+    try {
+      const rebuilt = await fullGeneration();
+      await writeRecipes(rebuilt);
+      const { writeStatic } = await import("./ssr");
+      await writeStatic(rebuilt);
+      await writeMetaNow(recipesSha, imagesSha, rebuilt.length);
+      console.log(
+        `[generate-static-data] Full rebuild complete. Wrote ${OUT_FILE} and ${META_FILE}`,
+      );
+    } catch (rebuildError: unknown) {
+      const msg =
+        rebuildError instanceof Error
+          ? rebuildError.message
+          : String(rebuildError);
+      throw new Error(`[generate-static-data] Full rebuild failed: ${msg}`);
     }
-    throw e;
   }
 }

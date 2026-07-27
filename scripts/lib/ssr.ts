@@ -71,6 +71,8 @@ export async function writeStatic(recipes: Recipe[]): Promise<void> {
     Record<string, unknown>
   >;
 
+  const pages = new Map<string, string>();
+
   // Index
   const indexTree: ReactElement = React.createElement(
     StaticRouterCT,
@@ -90,16 +92,7 @@ export async function writeStatic(recipes: Recipe[]): Promise<void> {
   let indexBody = jsx(indexTree);
   indexBody = rewriteLocalLinksToStatic(indexBody);
   const indexShell = baseShell("Recipes", indexBody);
-  await fs.promises.mkdir(STATIC_DIR, { recursive: true });
-  await fs.promises.copyFile(
-    BOOTSTRAP_CSS,
-    path.join(STATIC_DIR, "bootstrap.min.css"),
-  );
-  await fs.promises.writeFile(
-    path.join(STATIC_DIR, "index.html"),
-    indexShell,
-    "utf8",
-  );
+  pages.set("index.html", indexShell);
 
   // Per-recipe pages
   for (const r of recipes) {
@@ -121,8 +114,26 @@ export async function writeStatic(recipes: Recipe[]): Promise<void> {
     let body = jsx(recipeTree);
     body = rewriteLocalLinksToStatic(body);
     const shell = baseShell(`${r.name} – Recipes`, body);
-    const dir = path.join(STATIC_DIR, r.name);
-    await fs.promises.mkdir(dir, { recursive: true });
-    await fs.promises.writeFile(path.join(dir, "index.html"), shell, "utf8");
+    pages.set(path.join(r.name, "index.html"), shell);
+  }
+
+  const stagingDir = `${STATIC_DIR}.tmp`;
+  await fs.promises.rm(stagingDir, { recursive: true, force: true });
+  try {
+    await fs.promises.mkdir(stagingDir, { recursive: true });
+    await fs.promises.copyFile(
+      BOOTSTRAP_CSS,
+      path.join(stagingDir, "bootstrap.min.css"),
+    );
+    for (const [relativePath, contents] of Array.from(pages.entries())) {
+      const outputPath = path.join(stagingDir, relativePath);
+      await fs.promises.mkdir(path.dirname(outputPath), { recursive: true });
+      await fs.promises.writeFile(outputPath, contents, "utf8");
+    }
+    await fs.promises.rm(STATIC_DIR, { recursive: true, force: true });
+    await fs.promises.rename(stagingDir, STATIC_DIR);
+  } catch (error) {
+    await fs.promises.rm(stagingDir, { recursive: true, force: true });
+    throw error;
   }
 }
