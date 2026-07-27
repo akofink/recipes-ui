@@ -7,7 +7,7 @@ A React + TypeScript single-page app built with Webpack and deployed to GitHub P
 ## Prerequisites
 
 - Node.js LTS. This repo includes an `.nvmrc`; if you use `nvm`, run `nvm use`.
-- npm, bundled with Node.js. CI uses `npm ci` with `package-lock.json`.
+- npm, bundled with Node.js. npm is the only supported package manager; commit dependency changes through `package-lock.json`.
 - Git
 
 ## Getting started (local development)
@@ -51,7 +51,7 @@ A React + TypeScript single-page app built with Webpack and deployed to GitHub P
 - `npm run check` – Run typecheck, lint, and format check (used in CI)
 - `npm test` – Run the Jest test suite once
 - `npm run audit` – Audit production dependencies
-- `npm run deploy` – Publish `dist/` to the `gh-pages` branch using `gh-pages`
+- `npm run deploy` – Manually publish `dist/` to the `gh-pages` branch (the automated deployment does not use this script)
 
 ## Building for production
 
@@ -69,14 +69,14 @@ This repo uses GitHub Actions to build and deploy automatically:
 
 - **Build workflow**: `.github/workflows/build.yml` - Runs on pull requests to validate builds
 - **Deploy workflow**: `.github/workflows/deploy.yml` - Runs on pushes to `main` and deploys to GitHub Pages
-- The deploy action runs `npm run build` and then uploads the `dist/` folder to GitHub Pages using the official `actions/deploy-pages@v4` action
+- The deploy workflow runs `npm run build`, uploads `dist/` as a Pages artifact with `actions/upload-pages-artifact`, and deploys that artifact with `actions/deploy-pages`
 
 The deployment process includes:
 
-1. Build validation (typecheck, lint, format check)
+1. Build validation (typecheck, lint, format check) and tests
 2. Production build with static data generation
-3. Upload to GitHub Pages artifact storage
-4. Deploy to the live site
+3. Upload `dist/` to GitHub Pages artifact storage
+4. Deploy the artifact to the `github-pages` environment
 
 You can also deploy locally (requires push access):
 
@@ -87,7 +87,7 @@ npm run deploy
 
 ## Configuration and environment
 
-- Routing uses `react-router-dom` (v6). The dev server is configured with `historyApiFallback` so deep links work locally.
+- Routing uses `react-router-dom` v7. The development server uses `historyApiFallback` for local deep links. In production, GitHub Pages serves `404.html`, which redirects an unknown path into a query-string route that `public/index.html` restores before React Router starts.
 - `webpack.config.ts` reads `HOST` and `PORT` from the environment if set.
 - Static data generation and prerender: At build time, a script fetches recipe metadata and markdown from the recipes-md repo and writes `src/generated/recipes.json` plus `src/generated/meta.json` (tracked upstream SHAs used for incremental builds). When `meta.json` is missing or invalid, generation uses the initial recipes-md commit as the base for the compare API so the diff covers the full repo history. Then, the script uses React SSR (react-dom/server + StaticRouter) to prerender the real app UI to static HTML under `src/generated/static/` (copied to `dist/static/`). The `/static` site is explicitly for no-JavaScript browsers to degrade gracefully, while the SPA continues to work normally.
   - Optional token: To avoid rate limits during generation, set `GITHUB_TOKEN` (or `GH_TOKEN` / `RECIPES_GITHUB_TOKEN`) in your environment.
@@ -126,7 +126,7 @@ src/
 ## Troubleshooting
 
 - Port already in use: set a different `PORT` when starting, e.g. `PORT=4001 npm run start`.
-- Blank page on refresh in production: ensure GitHub Pages is serving the `gh-pages` branch; client-side routing relies on `index.html` being returned for unknown paths.
+- Blank page on refresh in production: confirm the Pages deployment includes both `dist/404.html` and the route-restoration script in `dist/index.html`.
 
 ---
 

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "license": "MIT",
   "private": true,
+  "packageManager": "npm@12.0.1",
   "homepage": "https://recipes.akofink.com/",
   "dependencies": {
     "bootstrap": "^5.3.8",
