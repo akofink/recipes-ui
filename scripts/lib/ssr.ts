@@ -10,6 +10,8 @@ import type { Recipe } from "./types";
 
 import { STATIC_DIR } from "./io";
 
+const BOOTSTRAP_CSS = require.resolve("bootstrap/dist/css/bootstrap.min.css");
+
 function toRecipeData(recipe: Recipe): RecipeData {
   return {
     name: recipe.name,
@@ -36,7 +38,7 @@ function baseShell(title: string, body: string): string {
   <meta charset=\"utf-8\" />
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
   <title>${title}</title>
-  <link href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css\" rel=\"stylesheet\">
+  <link href=\"/static/bootstrap.min.css\" rel=\"stylesheet\">
   <style>
     body { height: 100%; }
     .clean-link { text-decoration: none; color: inherit; }
@@ -89,6 +91,10 @@ export async function writeStatic(recipes: Recipe[]): Promise<void> {
   indexBody = rewriteLocalLinksToStatic(indexBody);
   const indexShell = baseShell("Recipes", indexBody);
   await fs.promises.mkdir(STATIC_DIR, { recursive: true });
+  await fs.promises.copyFile(
+    BOOTSTRAP_CSS,
+    path.join(STATIC_DIR, "bootstrap.min.css"),
+  );
   await fs.promises.writeFile(
     path.join(STATIC_DIR, "index.html"),
     indexShell,
