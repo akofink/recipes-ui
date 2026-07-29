@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 // Markdown pre-rendered in build step; use 'html' for rendering
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router";
 import Navigation from "./navigation";
 import { Row, Col, Modal, Spinner, Alert } from "react-bootstrap";
 import { RECIPESMD_RAW } from "../constants";

@@ -1,5 +1,5 @@
 import { FC, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 import { Alert, Container, Form, Row, Spinner } from "react-bootstrap";
 import RecipeCard from "../components/recipe-card";
 import { fetchRecipes } from "../services/recipes";
