@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, ReactElement, Suspense } from "react";
 import { findRecipe } from "./services/recipes";
 
 const App = lazy(() => import("./App"));
@@ -7,7 +7,7 @@ const Recipe = lazy(() =>
 );
 const NotFound = lazy(() => import("./layouts/not-found"));
 
-const suspense = (el: JSX.Element) => (
+const suspense = (el: ReactElement) => (
   <Suspense fallback={<div>Loading…</div>}>{el}</Suspense>
 );
 

@@ -1,5 +1,5 @@
 import { FC, useMemo, useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { Card, Col } from "react-bootstrap";
 import { RECIPESMD_RAW } from "../constants";
 import { GithubFile, RecipeData } from "../types";

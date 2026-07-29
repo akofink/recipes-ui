@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import React, { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { Route, Routes, StaticRouter } from "react-router-dom";
+import { Route, Routes, StaticRouter } from "react-router";
 import { Recipes as RecipesLayout } from "../../src/layouts/recipes";
 import { Recipe as RecipeView } from "../../src/layouts/recipe";
 import type { RecipeData } from "../../src/types";
@@ -26,19 +26,19 @@ function toRecipeData(recipe: Recipe): RecipeData {
 function rewriteLocalLinksToStatic(html: string): string {
   // Rewrite app-relative links to point to /static/ paths for static hosting
   return html.replace(
-    /href=\"\/(?!static\/)([^\"\/][^\"#?]*)\"/g,
-    'href=\"/static/$1/\"',
+    /href="\/(?!static\/)([^"/][^"#?]*)"/g,
+    'href="/static/$1/"',
   );
 }
 
 function baseShell(title: string, body: string): string {
   return `<!DOCTYPE html>
-<html lang=\"en\">
+<html lang="en">
 <head>
-  <meta charset=\"utf-8\" />
-  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${title}</title>
-  <link href=\"/static/bootstrap.min.css\" rel=\"stylesheet\">
+  <link href="/static/bootstrap.min.css" rel="stylesheet">
   <style>
     body { height: 100%; }
     .clean-link { text-decoration: none; color: inherit; }

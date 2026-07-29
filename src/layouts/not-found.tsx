@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import Navigation from "./navigation";
 
 const NotFound: FC = () => {

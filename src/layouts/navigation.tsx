@@ -1,6 +1,6 @@
 import { FC, PropsWithChildren, useEffect } from "react";
 import { Nav, Navbar } from "react-bootstrap";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router";
 
 const NEW_RECIPE_TEMPLATE = `Yield: 4 servings
 
