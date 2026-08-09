@@ -25,25 +25,32 @@ export const Recipe = ({ initialRecipe }: RecipeProps) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // initialRecipe is already seeded into state with loading=false; avoid a
+    // synchronous setLoading inside the effect when nothing needs loading.
     if (initialRecipe && initialRecipe.filename === filename) {
-      setLoading(false);
       return;
     }
+    let cancelled = false;
     const loadRecipe = async () => {
       try {
         setLoading(true);
         const data = await findRecipe(filename);
+        if (cancelled) return;
         setRecipe(data);
         setError(null);
       } catch (err) {
+        if (cancelled) return;
         setError("Failed to load recipe. Please try again later.");
         console.error("Error loading recipe:", err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     loadRecipe();
+    return () => {
+      cancelled = true;
+    };
   }, [filename, initialRecipe]);
 
   const html = recipe?.html || "";
@@ -110,6 +117,12 @@ export const Recipe = ({ initialRecipe }: RecipeProps) => {
           </Row>
         </div>
       )}
+      {/* The HTML is generated at build time by scripts/lib/markdown.ts, which
+           passes `marked` output through sanitize-html. It originates from the
+           operator-maintained recipes-md repo and is embedded in recipes.json
+           and the no-JS static pages only after sanitization, so rendering it
+           directly here is safe. */}
+      {/* eslint-disable-next-line @eslint-react/dom-no-dangerously-set-innerhtml -- sanitized at build time in scripts/lib/markdown.ts */}
       <div dangerouslySetInnerHTML={{ __html: html }} />
       <a href={`${EDIT_BASE_URL}/${filename}`} target="_blank" rel="noreferrer">
         Edit

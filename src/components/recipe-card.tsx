@@ -12,22 +12,27 @@ type RecipeCardProps = GithubFile & {
 export const RecipeCard: FC<RecipeCardProps> = ({ name, recipe }) => {
   const [loadedRecipe, setLoadedRecipe] = useState<RecipeData | null>(null);
 
+  // When the parent passes `recipe`, use it directly instead of mirroring it
+  // into state (a synchronous setState inside the effect, which the linter
+  // flags and which only causes an extra render). Only fetch by name when the
+  // parent does not provide the data.
   useEffect(() => {
-    if (recipe) {
-      setLoadedRecipe(recipe);
-      return;
-    }
+    if (recipe) return;
+    let cancelled = false;
     const loadRecipe = async () => {
       if (!name) return;
       try {
         const data = await findRecipeByName(name);
-        setLoadedRecipe(data);
+        if (!cancelled) setLoadedRecipe(data);
       } catch (err) {
-        console.error("Error loading recipe for card:", err);
+        if (!cancelled) console.error("Error loading recipe for card:", err);
       }
     };
 
     loadRecipe();
+    return () => {
+      cancelled = true;
+    };
   }, [name, recipe]);
 
   const imageName = (recipe ?? loadedRecipe)?.imageName ?? null;
