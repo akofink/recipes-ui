@@ -7,7 +7,7 @@ A React + TypeScript single-page app built with Webpack and deployed to GitHub P
 ## Prerequisites
 
 - Node.js LTS. This repo includes an `.nvmrc`; if you use `nvm`, run `nvm use`.
-- npm, bundled with Node.js. npm is the only supported package manager; commit dependency changes through `package-lock.json`.
+- pnpm, pinned in `package.json` through the `packageManager` field. Commit dependency changes through `pnpm-lock.yaml`.
 - Git
 
 ## Getting started (local development)
@@ -25,43 +25,43 @@ A React + TypeScript single-page app built with Webpack and deployed to GitHub P
    ```
 3. Install dependencies
    ```bash
-   npm install
+    pnpm install
    ```
 4. Generate data and start the development server
    - First, generate the recipe data:
      ```bash
-      npm run generate
+       pnpm run generate
      ```
    - Then start the development server (with HMR):
      ```bash
-      npm run start
+     pnpm run start
      ```
      By default the app serves on http://localhost:3000. You can override the host/port via environment variables when starting:
    ```bash
-    PORT=4000 HOST=127.0.0.1 npm run start
+    PORT=4000 HOST=127.0.0.1 pnpm run start
    ```
 
 ## Scripts
 
-- `npm run start` – Run webpack-dev-server with hot reload
-- `npm run watch` – Rebuild on file changes (without dev server)
-- `npm run generate` – Generate static data from recipes-md repository (creates `src/generated/recipes.json` and `src/generated/meta.json`)
-- `npm run build` – Create a production build in `dist/` (automatically runs generation first)
-- `npm run clean` – Remove generated files and build output (`src/generated/` and `dist/`)
-- `npm run check` – Run typecheck, lint, and format check (used in CI)
-- `npm test` – Run the Jest test suite once
-- `npm run audit` – Audit production dependencies
-- `npm run deploy` – Manually publish `dist/` to the `gh-pages` branch (the automated deployment does not use this script)
+- `pnpm run start` – Run webpack-dev-server with hot reload
+- `pnpm run watch` – Rebuild on file changes (without dev server)
+- `pnpm run generate` – Generate static data from recipes-md repository (creates `src/generated/recipes.json` and `src/generated/meta.json`)
+- `pnpm run build` – Create a production build in `dist/` (automatically runs generation first)
+- `pnpm run clean` – Remove generated files and build output (`src/generated/` and `dist/`)
+- `pnpm run check` – Run typecheck, lint, and format check (used in CI)
+- `pnpm test` – Run the Jest test suite once
+- `pnpm run audit` – Audit production dependencies
+- `pnpm run deploy` – Manually publish `dist/` to the `gh-pages` branch (the automated deployment does not use this script)
 
 ## Building for production
 
 ```bash
-npm run build
+pnpm run build
 ```
 
-The `npm run build` command automatically generates static data from the recipes-md repository and then creates an optimized production build. The static assets will be emitted to `dist/`. Serve that folder with any static file server. Pre-rendered static pages are under `dist/static/`.
+The `pnpm run build` command automatically generates static data from the recipes-md repository and then creates an optimized production build. The static assets will be emitted to `dist/`. Serve that folder with any static file server. Pre-rendered static pages are under `dist/static/`.
 
-**Note:** You don't need to run `npm run generate` manually before building - the build process handles this automatically.
+**Note:** You don't need to run `pnpm run generate` manually before building - the build process handles this automatically.
 
 ## Deployment
 
@@ -69,7 +69,7 @@ This repo uses GitHub Actions to build and deploy automatically:
 
 - **Build workflow**: `.github/workflows/build.yml` - Runs on pull requests to validate builds
 - **Deploy workflow**: `.github/workflows/deploy.yml` - Runs on pushes to `main` and deploys to GitHub Pages
-- The deploy workflow runs `npm run build`, uploads `dist/` as a Pages artifact with `actions/upload-pages-artifact`, and deploys that artifact with `actions/deploy-pages`
+- The deploy workflow runs `pnpm run build`, uploads `dist/` as a Pages artifact with `actions/upload-pages-artifact`, and deploys that artifact with `actions/deploy-pages`
 
 The deployment process includes:
 
@@ -81,8 +81,8 @@ The deployment process includes:
 You can also deploy locally (requires push access):
 
 ```bash
-npm run build
-npm run deploy
+pnpm run build
+pnpm run deploy
 ```
 
 ## Configuration and environment
@@ -110,22 +110,22 @@ src/
 
 - ESLint and Prettier are configured. Example commands:
   ```bash
-  npx eslint src --ext .ts,.tsx
-  npx prettier --check .
-  npx prettier --write .
+   pnpm exec eslint src --ext .ts,.tsx
+   pnpm exec prettier --check .
+   pnpm exec prettier --write .
   ```
 
 ## Common warnings
 
 - Browserslist: caniuse-lite is outdated – this is informational. Update the local DB:
   ```bash
-  npx update-browserslist-db@latest
+   pnpm dlx update-browserslist-db@latest
   ```
 - Sass deprecations from Bootstrap – warnings about abs(), percentage units, or unitless values come from Bootstrap’s SCSS. They don’t break the build. They’ll be resolved in future Bootstrap releases. You can ignore them during development.
 
 ## Troubleshooting
 
-- Port already in use: set a different `PORT` when starting, e.g. `PORT=4001 npm run start`.
+- Port already in use: set a different `PORT` when starting, e.g. `PORT=4001 pnpm run start`.
 - Blank page on refresh in production: confirm the Pages deployment includes both `dist/404.html` and the route-restoration script in `dist/index.html`.
 
 ---
