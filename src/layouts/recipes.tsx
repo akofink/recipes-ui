@@ -30,27 +30,32 @@ export const Recipes: FC<RecipesProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Load recipes on mount
+  // Load recipes on mount. When initialRecipes is provided it is already
+  // seeded into state with loading=false, so nothing needs loading here
+  // (avoids a synchronous setLoading inside the effect, which the linter flags).
   useEffect(() => {
-    if (initialRecipes) {
-      setLoading(false);
-      return;
-    }
+    if (initialRecipes) return;
+    let cancelled = false;
     const loadRecipes = async () => {
       try {
         setLoading(true);
         const data = await fetchRecipes();
+        if (cancelled) return;
         setRecipes(data);
         setError(null);
       } catch (err) {
+        if (cancelled) return;
         setError("Failed to load recipes. Please try again later.");
         console.error("Error loading recipes:", err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     loadRecipes();
+    return () => {
+      cancelled = true;
+    };
   }, [initialRecipes]);
 
   const query = searchParams.get("q") || "";
