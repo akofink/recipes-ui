@@ -1,6 +1,6 @@
 ## Recipes UI agent notes
 
-- This app is a React + TypeScript SPA built with Webpack and deployed to GitHub Pages.
+- This app is a React + TypeScript SPA built with Vite and deployed to GitHub Pages.
 - Recipe content comes from https://github.com/akofink/recipes-md.
 - All recipe data is generated at build time. The generator fetches markdown and metadata from recipes-md, writes `src/generated/recipes.json`, and pre-renders HTML into `src/generated/static/` (copied to `dist/static/`).
 - `src/generated/meta.json` stores upstream commit SHAs used for incremental builds; it determines what the next generate considers "changed."
@@ -15,9 +15,9 @@
 - Prefer the pinned pnpm setup with Node from `.nvmrc`: run `nvm use` first if Node/pnpm are not already functional.
 - `pnpm run generate` to build recipe data (writes `src/generated/recipes.json`).
 - `pnpm run build` runs generation and emits production assets to `dist/`.
-- `pnpm run start` runs webpack-dev-server at http://localhost:3000.
+- `pnpm run start` runs the Vite dev server at http://localhost:3000.
 
 ## Configuration and routing
 
-- `webpack.config.ts` reads `HOST` and `PORT` for dev server configuration.
+- `vite.config.mts` reads `HOST` and `PORT` for dev server configuration.
 - Routing uses `react-router-dom` v6; dev server uses `historyApiFallback` for deep links.

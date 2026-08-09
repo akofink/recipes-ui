@@ -2,7 +2,7 @@
 
 Live site: https://recipes.akofink.com
 
-A React + TypeScript single-page app built with Webpack and deployed to GitHub Pages. Recipe content is sourced from the public repository https://github.com/akofink/recipes-md.
+A React + TypeScript single-page app built with Vite and deployed to GitHub Pages. Recipe content is sourced from the public repository https://github.com/akofink/recipes-md.
 
 ## Prerequisites
 
@@ -43,7 +43,7 @@ A React + TypeScript single-page app built with Webpack and deployed to GitHub P
 
 ## Scripts
 
-- `pnpm run start` – Run webpack-dev-server with hot reload
+- `pnpm run start` – Run the Vite dev server with HMR
 - `pnpm run watch` – Rebuild on file changes (without dev server)
 - `pnpm run generate` – Generate static data from recipes-md repository (creates `src/generated/recipes.json` and `src/generated/meta.json`)
 - `pnpm run build` – Create a production build in `dist/` (automatically runs generation first)
@@ -87,8 +87,8 @@ pnpm run deploy
 
 ## Configuration and environment
 
-- Routing uses `react-router-dom` v7. The development server uses `historyApiFallback` for local deep links. In production, GitHub Pages serves `404.html`, which redirects an unknown path into a query-string route that `public/index.html` restores before React Router starts.
-- `webpack.config.ts` reads `HOST` and `PORT` from the environment if set.
+- Routing uses `react-router-dom` v7. Vite serves the SPA fallback for local deep links. In production, GitHub Pages serves `404.html`, which redirects an unknown path into a query-string route that `index.html` restores before React Router starts.
+- `vite.config.mts` reads `HOST` and `PORT` from the environment if set.
 - Static data generation and prerender: At build time, a script fetches recipe metadata and markdown from the recipes-md repo and writes `src/generated/recipes.json` plus `src/generated/meta.json` (tracked upstream SHAs used for incremental builds). When `meta.json` is missing or invalid, generation uses the initial recipes-md commit as the base for the compare API so the diff covers the full repo history. Then, the script uses React SSR (react-dom/server + StaticRouter) to prerender the real app UI to static HTML under `src/generated/static/` (copied to `dist/static/`). The `/static` site is explicitly for no-JavaScript browsers to degrade gracefully, while the SPA continues to work normally.
   - Optional token: To avoid rate limits during generation, set `GITHUB_TOKEN` (or `GH_TOKEN` / `RECIPES_GITHUB_TOKEN`) in your environment.
   - Incremental: The generator checks latest upstream commit SHAs for `recipes/` and `images/` paths and skips regeneration when unchanged (but still refreshes prerendered HTML from local data).
