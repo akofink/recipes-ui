@@ -20,7 +20,9 @@
   "ts-node": {
     "compilerOptions": {
       "module": "CommonJS",
-      "moduleResolution": "node"
+      "moduleResolution": "node10",
+      "ignoreDeprecations": "6.0",
+      "rootDir": "."
     }
   },
   "include": ["src", "scripts/**/*.ts"]
